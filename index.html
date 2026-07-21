@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Saiberassist ROI Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero card">
+        <p class="eyebrow">Saiberassist ROI Calculator</p>
+        <h1>Enter three numbers. See what a Saiberassist VA is worth this year.</h1>
+        <p class="subtitle">
+          Built for physicians who want transparent math in under 90 seconds.
+        </p>
+      </section>
+
+      <section class="card form-wrap">
+        <form id="roi-form" novalidate>
+          <div class="grid">
+            <fieldset>
+              <legend>Step 1 — Required</legend>
+              <label for="specialty">Specialty</label>
+              <select id="specialty" name="specialty" required>
+                <option value="" selected disabled>Select specialty</option>
+              </select>
+
+              <label for="patientsPerWeek">Patients seen per week: <span id="patientsPerWeekValue">60</span></label>
+              <input id="patientsPerWeek" name="patientsPerWeek" type="range" min="5" max="150" value="60" />
+
+              <label for="adminHours">
+                Hours/week on admin: <span id="adminHoursValue">15</span>
+              </label>
+              <input id="adminHours" name="adminHours" type="range" min="2" max="40" value="15" />
+              <p class="help">Best guess — after clinic and on weekends counts.</p>
+            </fieldset>
+
+            <fieldset>
+              <legend>Step 2 — Optional</legend>
+              <label for="revenuePerVisit">Average revenue per patient visit ($)</label>
+              <input id="revenuePerVisit" name="revenuePerVisit" type="number" min="1" inputmode="decimal" />
+
+              <label for="physicianCount">Number of physicians in practice</label>
+              <input id="physicianCount" name="physicianCount" type="number" min="1" step="1" value="1" />
+              <p class="help">Leave blank to use specialty defaults.</p>
+            </fieldset>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="button-primary">Calculate ROI</button>
+            <a class="formula-link" href="#formula">How we calculate this</a>
+          </div>
+          <p class="privacy">
+            No PHI collected. <a href="https://saiberassist.com/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
+          </p>
+        </form>
+      </section>
+
+      <section id="result" class="card result hidden" aria-live="polite">
+        <h2>Your estimate</h2>
+        <div class="metrics">
+          <article>
+            <p class="metric-label">Net annual benefit</p>
+            <p class="metric-value" id="netBenefit">$0</p>
+          </article>
+          <article>
+            <p class="metric-label">Extra patients/week unlocked</p>
+            <p class="metric-value" id="extraPatients">+0</p>
+          </article>
+          <article>
+            <p class="metric-label">Hours back per week</p>
+            <p class="metric-value" id="hoursBack">+0.0</p>
+          </article>
+        </div>
+        <p class="break-even" id="breakEven"></p>
+
+        <div class="math-strip" id="mathStrip"></div>
+
+        <div class="below-fold">
+          <h3>How we get there</h3>
+          <ul>
+            <li>Live scribing support during and after visits</li>
+            <li>Prior authorizations and referral coordination</li>
+            <li>Inbox triage, refill handling, and follow-up admin</li>
+          </ul>
+          <p class="not-included">
+            What's not in this number: reduced burnout, retained staff, and evenings back.
+          </p>
+        </div>
+      </section>
+
+      <section id="gate" class="card gate hidden">
+        <h2>Get the full report + a 15-minute call with Dr. Reddy</h2>
+        <p>See your full arithmetic breakdown and personalized summary by email.</p>
+        <form id="lead-form" novalidate>
+          <div class="gate-grid">
+            <label for="fullName">Full name
+              <input id="fullName" name="fullName" type="text" required />
+            </label>
+            <label for="email">Email
+              <input id="email" name="email" type="email" required />
+            </label>
+            <label for="phone">Phone
+              <input id="phone" name="phone" type="tel" required />
+            </label>
+          </div>
+          <button type="submit" class="button-primary">Unlock report</button>
+          <p id="gateMessage" class="gate-message"></p>
+          <p class="privacy">
+            No PHI collected. <a href="https://saiberassist.com/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
+          </p>
+        </form>
+      </section>
+
+      <section id="formula" class="card formula">
+        <h2>Formula transparency</h2>
+        <p>
+          recovered_hrs = admin_hours × 0.7<br />
+          annual_recovered_hrs = recovered_hrs × 48<br />
+          extra_patients_per_week = floor(recovered_hrs × 60 ÷ visit_time_minutes)<br />
+          extra_patients_per_year = extra_patients_per_week × 48<br />
+          additional_revenue = extra_patients_per_year × revenue_per_visit<br />
+          annual_va_cost = $19,200<br />
+          net_benefit = (additional_revenue × physician_count) − annual_va_cost<br />
+          roi_multiple = (additional_revenue × physician_count) ÷ annual_va_cost
+        </p>
+        <p class="privacy">
+          No PHI collected. <a href="https://saiberassist.com/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
+        </p>
+      </section>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>
