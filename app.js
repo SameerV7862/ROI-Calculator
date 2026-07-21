@@ -2,22 +2,27 @@ const constants = {
   annualVACost: 19200,
   weeksPerYear: 48,
   absorbableAdminRate: 0.7,
+  visitCycleMultiplier: 2.5,
+  annualInHouseMASalary: 42990,
+  inHouseMABenefitsRate: 0.295,
+  inHouseMATrainingCost: 4700,
+  minimumContributionPerVisit: 1,
 };
 
 const specialtyDefaults = {
-  Rheumatology: { revenue: 240, visitTime: 25 },
-  Dermatology: { revenue: 190, visitTime: 15 },
-  GI: { revenue: 260, visitTime: 20 },
-  Cardiology: { revenue: 275, visitTime: 25 },
-  Endocrinology: { revenue: 230, visitTime: 25 },
-  "Pain Management": { revenue: 250, visitTime: 20 },
-  Oncology: { revenue: 350, visitTime: 30 },
-  Orthopedics: { revenue: 280, visitTime: 20 },
-  Nephrology: { revenue: 220, visitTime: 25 },
-  "Primary Care": { revenue: 160, visitTime: 20 },
-  "Behavioral Health": { revenue: 180, visitTime: 45 },
-  "DPC/Concierge": { revenue: 200, visitTime: 30 },
-  Other: { revenue: 220, visitTime: 25 },
+  Rheumatology: { revenue: 240, overhead: 144, visitTime: 25 },
+  Dermatology: { revenue: 190, overhead: 105, visitTime: 15 },
+  GI: { revenue: 260, overhead: 161, visitTime: 20 },
+  Cardiology: { revenue: 275, overhead: 176, visitTime: 25 },
+  Endocrinology: { revenue: 230, overhead: 145, visitTime: 25 },
+  "Pain Management": { revenue: 250, overhead: 158, visitTime: 20 },
+  Oncology: { revenue: 350, overhead: 245, visitTime: 30 },
+  Orthopedics: { revenue: 280, overhead: 165, visitTime: 20 },
+  Nephrology: { revenue: 220, overhead: 141, visitTime: 25 },
+  "Primary Care": { revenue: 160, overhead: 101, visitTime: 20 },
+  "Behavioral Health": { revenue: 180, overhead: 115, visitTime: 45 },
+  "DPC/Concierge": { revenue: 200, overhead: 100, visitTime: 30 },
+  Other: { revenue: 220, overhead: 132, visitTime: 25 },
 };
 
 const form = document.getElementById("roi-form");
@@ -26,7 +31,8 @@ const specialtyInput = document.getElementById("specialty");
 const patientsPerWeekInput = document.getElementById("patientsPerWeek");
 const adminHoursInput = document.getElementById("adminHours");
 const revenuePerVisitInput = document.getElementById("revenuePerVisit");
-const physicianCountInput = document.getElementById("physicianCount");
+const overheadPerVisitInput = document.getElementById("overheadPerVisit");
+const vaCountInput = document.getElementById("vaCount");
 const patientsPerWeekValue = document.getElementById("patientsPerWeekValue");
 const adminHoursValue = document.getElementById("adminHoursValue");
 
@@ -40,6 +46,12 @@ const hoursBackEl = document.getElementById("hoursBack");
 const breakEvenEl = document.getElementById("breakEven");
 const mathStripEl = document.getElementById("mathStrip");
 const gateMessageEl = document.getElementById("gateMessage");
+const maSalaryEl = document.getElementById("maSalary");
+const maBenefitsEl = document.getElementById("maBenefits");
+const maTrainingEl = document.getElementById("maTraining");
+const maTotalEl = document.getElementById("maTotal");
+const vaSalaryOnlyEl = document.getElementById("vaSalaryOnly");
+const vaVsMaBenefitEl = document.getElementById("vaVsMaBenefit");
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("en-US", {
@@ -84,48 +96,76 @@ function onSpecialtyChange() {
   if (!revenuePerVisitInput.value) {
     revenuePerVisitInput.value = selected.revenue;
   }
+  if (!overheadPerVisitInput.value) {
+    overheadPerVisitInput.value = selected.overhead;
+  }
 }
 
 function calculate(inputs) {
   const defaults = specialtyDefaults[inputs.specialty];
   const revenuePerVisit = inputs.revenuePerVisit || defaults.revenue;
+  const overheadPerVisit = inputs.overheadPerVisit || defaults.overhead;
   const visitTime = defaults.visitTime;
-  const physicianCount = inputs.physicianCount || 1;
+  const effectiveVisitCycleTime = visitTime * constants.visitCycleMultiplier;
+  const vaCount = inputs.vaCount || 1;
 
   const recoveredHoursPerWeek = inputs.adminHours * constants.absorbableAdminRate;
   const annualRecoveredHours = recoveredHoursPerWeek * constants.weeksPerYear;
-  const extraPatientsPerWeek = Math.floor((recoveredHoursPerWeek * 60) / visitTime);
+  const extraPatientsPerWeek = Math.floor((recoveredHoursPerWeek * 60) / effectiveVisitCycleTime);
   const extraPatientsPerYear = extraPatientsPerWeek * constants.weeksPerYear;
   const additionalRevenue = extraPatientsPerYear * revenuePerVisit;
-  const scaledRevenue = additionalRevenue * physicianCount;
-  const netBenefit = scaledRevenue - constants.annualVACost;
-  const roiMultiple = scaledRevenue / constants.annualVACost;
-  const breakEvenPatients = Math.ceil(
-    constants.annualVACost / constants.weeksPerYear / revenuePerVisit
+  const additionalOverhead = extraPatientsPerYear * overheadPerVisit;
+  const additionalMargin = additionalRevenue - additionalOverhead;
+  const scaledMargin = additionalMargin * vaCount;
+  const annualVACost = constants.annualVACost * vaCount;
+  const netBenefit = scaledMargin - annualVACost;
+  const roiMultiple = annualVACost > 0 ? scaledMargin / annualVACost : 0;
+  const contributionPerVisit = Math.max(
+    revenuePerVisit - overheadPerVisit,
+    constants.minimumContributionPerVisit
   );
+  const breakEvenPatients = Math.ceil(
+    constants.annualVACost / constants.weeksPerYear / contributionPerVisit
+  );
+  const inHouseMASalary = constants.annualInHouseMASalary * vaCount;
+  const inHouseMABenefits = inHouseMASalary * constants.inHouseMABenefitsRate;
+  const inHouseMATraining = constants.inHouseMATrainingCost * vaCount;
+  const inHouseMATotal = inHouseMASalary + inHouseMABenefits + inHouseMATraining;
+  const additionalInHouseMACosts = inHouseMABenefits + inHouseMATraining;
+  const vaAdvantageVsInHouseMA = netBenefit - additionalInHouseMACosts;
 
   return {
     revenuePerVisit,
+    overheadPerVisit,
     visitTime,
-    physicianCount,
+    effectiveVisitCycleTime,
+    vaCount,
     recoveredHoursPerWeek,
     annualRecoveredHours,
     extraPatientsPerWeek,
     extraPatientsPerYear,
     additionalRevenue,
-    scaledRevenue,
+    additionalOverhead,
+    additionalMargin,
+    scaledMargin,
+    annualVACost,
     netBenefit,
     roiMultiple,
     breakEvenPatients,
+    inHouseMASalary,
+    inHouseMABenefits,
+    inHouseMATraining,
+    inHouseMATotal,
+    vaAdvantageVsInHouseMA,
   };
 }
 
 function renderResults(values) {
-  const singlePhysicianRevenue = values.additionalRevenue;
+  const singleVAContribution = values.additionalMargin;
   netBenefitEl.textContent = formatCurrency(values.netBenefit);
   extraPatientsEl.textContent = `+${formatNumber(values.extraPatientsPerWeek)}`;
   hoursBackEl.textContent = `+${values.recoveredHoursPerWeek.toFixed(1)}`;
-  breakEvenEl.textContent = `You break even on the VA at just ${values.breakEvenPatients} extra patient${
+  breakEvenEl.textContent = `You break even on the VA at just ${values.breakEvenPatients} extra net-positive patient${
     values.breakEvenPatients === 1 ? "" : "s"
   } per week.`;
 
@@ -133,21 +173,39 @@ function renderResults(values) {
     <p><strong>${values.recoveredHoursPerWeek.toFixed(1)} hrs recovered</strong> × 48 weeks = <strong>${formatNumber(
       Math.round(values.annualRecoveredHours)
     )} hrs/year</strong></p>
-    <p>${formatNumber(Math.round(values.annualRecoveredHours))} hrs ÷ ${values.visitTime} min per visit = <strong>~${formatNumber(
+    <p>${values.visitTime} min average visit × ${constants.visitCycleMultiplier} cycle-time factor = <strong>${values.effectiveVisitCycleTime.toFixed(
+      1
+    )} effective minutes per patient</strong></p>
+    <p>${formatNumber(Math.round(values.annualRecoveredHours))} hrs ÷ ${values.effectiveVisitCycleTime.toFixed(
+      1
+    )} effective min per patient = <strong>~${formatNumber(
       values.extraPatientsPerYear
     )} extra patients/year</strong></p>
     <p>${formatNumber(values.extraPatientsPerYear)} patients × ${formatCurrency(
       values.revenuePerVisit
-    )}/visit = <strong>${formatCurrency(singlePhysicianRevenue)} new revenue</strong></p>
+    )}/visit revenue = <strong>${formatCurrency(values.additionalRevenue)} gross added revenue</strong></p>
+    <p>${formatNumber(values.extraPatientsPerYear)} patients × ${formatCurrency(
+      values.overheadPerVisit
+    )}/visit overhead = <strong>${formatCurrency(values.additionalOverhead)} added overhead</strong></p>
+    <p>${formatCurrency(values.additionalRevenue)} − ${formatCurrency(
+      values.additionalOverhead
+    )} = <strong>${formatCurrency(singleVAContribution)} contribution margin per VA</strong></p>
     ${
-      values.physicianCount > 1
-        ? `<p>${formatCurrency(singlePhysicianRevenue)} × ${values.physicianCount} physicians = <strong>${formatCurrency(values.scaledRevenue)} total added revenue</strong></p>`
+      values.vaCount > 1
+        ? `<p>${formatCurrency(singleVAContribution)} × ${values.vaCount} VAs = <strong>${formatCurrency(values.scaledMargin)} total added contribution</strong></p>`
         : ""
     }
-    <p>${formatCurrency(values.scaledRevenue)} − ${formatCurrency(
-      constants.annualVACost
+    <p>${formatCurrency(values.scaledMargin)} − ${formatCurrency(
+      values.annualVACost
     )} VA cost = <strong>${formatCurrency(values.netBenefit)} net gain</strong></p>
   `;
+
+  maSalaryEl.textContent = formatCurrency(values.inHouseMASalary);
+  maBenefitsEl.textContent = formatCurrency(values.inHouseMABenefits);
+  maTrainingEl.textContent = formatCurrency(values.inHouseMATraining);
+  maTotalEl.textContent = formatCurrency(values.inHouseMATotal);
+  vaSalaryOnlyEl.textContent = formatCurrency(values.annualVACost);
+  vaVsMaBenefitEl.textContent = `VA advantage vs in-house MA: ${formatCurrency(values.vaAdvantageVsInHouseMA)} / year`;
 }
 
 function readInputs() {
@@ -156,7 +214,8 @@ function readInputs() {
     patientsPerWeek: Number(patientsPerWeekInput.value),
     adminHours: Number(adminHoursInput.value),
     revenuePerVisit: Number(revenuePerVisitInput.value) || null,
-    physicianCount: Number(physicianCountInput.value) || 1,
+    overheadPerVisit: Number(overheadPerVisitInput.value) || null,
+    vaCount: Number(vaCountInput.value) || 1,
   };
 }
 
@@ -174,10 +233,11 @@ function handleCalcSubmit(event) {
     patientsPerWeek: inputs.patientsPerWeek,
     adminHours: inputs.adminHours,
   });
-  if (inputs.revenuePerVisit || inputs.physicianCount !== 1) {
+  if (inputs.revenuePerVisit || inputs.overheadPerVisit || inputs.vaCount !== 1) {
     track("step_2_completed", {
       revenuePerVisit: inputs.revenuePerVisit,
-      physicianCount: inputs.physicianCount,
+      overheadPerVisit: inputs.overheadPerVisit,
+      vaCount: inputs.vaCount,
     });
   }
   renderResults(values);

@@ -233,6 +233,28 @@ input[type="range"] {
   font-family: "DM Sans", Inter, sans-serif;
 }
 
+.comparison {
+  margin-top: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem;
+  background: #f8fbff;
+}
+
+.comparison h3 {
+  margin-top: 0;
+}
+
+.comparison-benefit {
+  margin: 0.25rem 0;
+  color: #12493f;
+  font-weight: 700;
+}
+
+.comparison-grid p {
+  margin: 0.45rem 0;
+}
+
 .below-fold ul {
   margin-top: 0.4rem;
   padding-left: 1.15rem;

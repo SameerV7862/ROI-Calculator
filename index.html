@@ -47,8 +47,11 @@
               <label for="revenuePerVisit">Average revenue per patient visit ($)</label>
               <input id="revenuePerVisit" name="revenuePerVisit" type="number" min="1" inputmode="decimal" />
 
-              <label for="physicianCount">Number of physicians in practice</label>
-              <input id="physicianCount" name="physicianCount" type="number" min="1" step="1" value="1" />
+              <label for="overheadPerVisit">Average overhead per patient visit ($)</label>
+              <input id="overheadPerVisit" name="overheadPerVisit" type="number" min="1" inputmode="decimal" />
+
+              <label for="vaCount">Potential number of virtual assistants for the practice</label>
+              <input id="vaCount" name="vaCount" type="number" min="1" step="1" value="1" />
               <p class="help">Leave blank to use specialty defaults.</p>
             </fieldset>
           </div>
@@ -82,6 +85,21 @@
         <p class="break-even" id="breakEven"></p>
 
         <div class="math-strip" id="mathStrip"></div>
+
+        <section class="comparison">
+          <h3>VA vs in-house medical assistant</h3>
+          <p class="comparison-benefit" id="vaVsMaBenefit">$0</p>
+          <p class="help">
+            This compares the VA benefit above against the additional in-house MA costs (benefits + training).
+          </p>
+          <div class="comparison-grid">
+            <p>In-house MA salary: <strong id="maSalary">$0</strong></p>
+            <p>In-house MA benefits: <strong id="maBenefits">$0</strong></p>
+            <p>In-house MA training/onboarding: <strong id="maTraining">$0</strong></p>
+            <p>Total in-house MA cost: <strong id="maTotal">$0</strong></p>
+            <p>VA salary-only cost: <strong id="vaSalaryOnly">$0</strong></p>
+          </div>
+        </section>
 
         <div class="below-fold">
           <h3>How we get there</h3>
@@ -124,12 +142,16 @@
         <p>
           recovered_hrs = admin_hours × 0.7<br />
           annual_recovered_hrs = recovered_hrs × 48<br />
-          extra_patients_per_week = floor(recovered_hrs × 60 ÷ visit_time_minutes)<br />
+          effective_visit_cycle_minutes = visit_time_minutes × 2.5<br />
+          extra_patients_per_week = floor(recovered_hrs × 60 ÷ effective_visit_cycle_minutes)<br />
           extra_patients_per_year = extra_patients_per_week × 48<br />
           additional_revenue = extra_patients_per_year × revenue_per_visit<br />
-          annual_va_cost = $19,200<br />
-          net_benefit = (additional_revenue × physician_count) − annual_va_cost<br />
-          roi_multiple = (additional_revenue × physician_count) ÷ annual_va_cost
+          additional_overhead = extra_patients_per_year × overhead_per_visit<br />
+          additional_margin = additional_revenue − additional_overhead<br />
+          annual_va_cost = $19,200 × va_count<br />
+          net_benefit = (additional_margin × va_count) − annual_va_cost<br />
+          in_house_ma_total = (salary + benefits + training) × va_count<br />
+          va_advantage_vs_ma = net_benefit − ((benefits + training) × va_count)
         </p>
         <p class="privacy">
           No PHI collected. <a href="https://saiberassist.com/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
@@ -139,6 +161,22 @@
         <h2>Research & Evidence Base</h2>
         <p>The ROI calculations in this tool are grounded in peer-reviewed literature on virtual medical assistants and AI-enabled clinical documentation:</p>
         <ol class="citations-list">
+          <li>
+            <strong>D'Andreamatteo, A., et al.</strong> (2020). Losing the wait: improving patient cycle time in primary care. <em>BMJ Open Quality</em>, 9(2), e000910.
+            <br /><a href="https://bmjopenquality.bmj.com/content/9/2/e000910" target="_blank" rel="noopener noreferrer">https://bmjopenquality.bmj.com/content/9/2/e000910</a>
+          </li>
+          <li>
+            <strong>U.S. Bureau of Labor Statistics.</strong> (2025). Occupational Outlook Handbook: Medical Assistants.
+            <br /><a href="https://www.bls.gov/ooh/healthcare/medical-assistants.htm" target="_blank" rel="noopener noreferrer">https://www.bls.gov/ooh/healthcare/medical-assistants.htm</a>
+          </li>
+          <li>
+            <strong>U.S. Bureau of Labor Statistics.</strong> (2025). Employer costs for employee compensation (civilian workers).
+            <br /><a href="https://www.bls.gov/news.release/ecec.htm" target="_blank" rel="noopener noreferrer">https://www.bls.gov/news.release/ecec.htm</a>
+          </li>
+          <li>
+            <strong>Society for Human Resource Management (SHRM).</strong> (2022). Human Capital Benchmarking Report (average cost per hire).
+            <br /><a href="https://www.shrm.org/topics-tools/tools/research/human-capital-benchmarking-report" target="_blank" rel="noopener noreferrer">https://www.shrm.org/topics-tools/tools/research/human-capital-benchmarking-report</a>
+          </li>
           <li>
             <strong>Howley, M. J., Chou, E. Y., Hansen, N., & Dalrymple, P. W.</strong> (2015). The long-term financial impact of electronic health record implementation. <em>Journal of the American Medical Informatics Association</em>, 22(2), 443–452.
             <br /><a href="https://doi.org/10.1136/amiajnl-2014-002686" target="_blank" rel="noopener noreferrer">https://doi.org/10.1136/amiajnl-2014-002686</a>
@@ -167,5 +205,3 @@
     <script src="./app.js"></script>
   </body>
 </html>
-cd /workspaces/ROI-Calculator
-python3 -m http.server 8000
