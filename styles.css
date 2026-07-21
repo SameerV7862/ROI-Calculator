@@ -1,0 +1,261 @@
+:root {
+  --brand-teal: #33bca8;
+  --brand-deep: #332058;
+  --brand-cream: #f6f6f6;
+  --brand-white: #ffffff;
+  --text: #211a2e;
+  --muted: #5d566a;
+  --border: #d9d4e4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(160deg, #f7fcfb 0%, #f7f6fb 100%);
+  color: var(--text);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.45;
+}
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.card {
+  background: var(--brand-white);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(51, 32, 88, 0.08);
+  padding: 1rem;
+}
+
+.hero {
+  background: linear-gradient(140deg, #332058 0%, #3e2a6a 55%, #33bca8 100%);
+  color: #fff;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+h1,
+h2,
+h3,
+legend {
+  font-family: "DM Sans", Inter, sans-serif;
+  line-height: 1.2;
+}
+
+h1 {
+  margin: 0.55rem 0;
+  font-size: clamp(1.35rem, 4vw, 2rem);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.98rem;
+  max-width: 48ch;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin: 0;
+  padding: 0.9rem;
+}
+
+legend {
+  padding: 0 0.45rem;
+  font-weight: 700;
+  color: var(--brand-deep);
+}
+
+label {
+  display: block;
+  margin: 0.55rem 0 0.3rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+input[type="number"],
+input[type="email"],
+input[type="tel"],
+input[type="text"],
+select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--brand-white);
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--brand-teal);
+}
+
+.help {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.actions {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.button-primary {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.78rem 1.1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(130deg, var(--brand-deep), #51388a);
+  cursor: pointer;
+}
+
+.button-primary:hover {
+  filter: brightness(1.05);
+}
+
+.formula-link {
+  color: var(--brand-deep);
+  font-weight: 600;
+}
+
+.hidden {
+  display: none;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.metrics article {
+  background: var(--brand-cream);
+  border-radius: 12px;
+  padding: 0.75rem;
+  border: 1px solid #ece8f3;
+}
+
+.metric-label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.metric-value {
+  margin: 0.3rem 0 0;
+  font-size: clamp(1.3rem, 5vw, 1.9rem);
+  font-weight: 800;
+  color: var(--brand-deep);
+}
+
+.break-even {
+  margin: 0.85rem 0;
+  color: #12493f;
+  background: #e9f9f5;
+  border: 1px solid #c7efe6;
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+  font-weight: 600;
+}
+
+.math-strip {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem;
+  background: #fcfbff;
+}
+
+.math-strip p {
+  margin: 0.35rem 0;
+  font-family: "DM Sans", Inter, sans-serif;
+}
+
+.below-fold ul {
+  margin-top: 0.4rem;
+  padding-left: 1.15rem;
+}
+
+.not-included {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.gate {
+  border-top: 4px solid var(--brand-teal);
+}
+
+.gate-grid {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.gate-message {
+  min-height: 1.2rem;
+  margin: 0.6rem 0 0;
+  font-weight: 600;
+}
+
+.privacy {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.privacy a {
+  color: var(--brand-deep);
+}
+
+@media (min-width: 760px) {
+  .page {
+    padding: 1.25rem;
+  }
+
+  .card {
+    padding: 1.2rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .metrics {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .actions {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .gate-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
