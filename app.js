@@ -32,6 +32,8 @@ const adminHoursValue = document.getElementById("adminHoursValue");
 
 const resultSection = document.getElementById("result");
 const gateSection = document.getElementById("gate");
+const formulaSection = document.getElementById("formula");
+const formulaToggleBtn = document.getElementById("formulaToggle");
 const netBenefitEl = document.getElementById("netBenefit");
 const extraPatientsEl = document.getElementById("extraPatients");
 const hoursBackEl = document.getElementById("hoursBack");
@@ -208,3 +210,8 @@ patientsPerWeekInput.addEventListener("input", updateSliderLabels);
 adminHoursInput.addEventListener("input", updateSliderLabels);
 form.addEventListener("submit", handleCalcSubmit);
 leadForm.addEventListener("submit", handleLeadSubmit);
+
+formulaToggleBtn.addEventListener("click", (event) => {
+  event.preventDefault();
+  formulaSection.classList.toggle("hidden");
+});

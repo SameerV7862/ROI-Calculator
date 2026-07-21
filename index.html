@@ -55,7 +55,7 @@
 
           <div class="actions">
             <button type="submit" class="button-primary">Calculate ROI</button>
-            <a class="formula-link" href="#formula">How we calculate this</a>
+            <button type="button" class="formula-link" id="formulaToggle">How we calculate this</button>
           </div>
           <p class="privacy">
             No PHI collected. <a href="https://saiberassist.com/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
@@ -119,7 +119,7 @@
         </form>
       </section>
 
-      <section id="formula" class="card formula">
+      <section id="formula" class="card formula hidden">
         <h2>Formula transparency</h2>
         <p>
           recovered_hrs = admin_hours × 0.7<br />
@@ -135,7 +135,37 @@
           No PHI collected. <a href="https://saiberassist.com/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
         </p>
       </section>
-    </main>
+      <section id="citations" class="card citations">
+        <h2>Research & Evidence Base</h2>
+        <p>The ROI calculations in this tool are grounded in peer-reviewed literature on virtual medical assistants and AI-enabled clinical documentation:</p>
+        <ol class="citations-list">
+          <li>
+            <strong>Howley, M. J., Chou, E. Y., Hansen, N., & Dalrymple, P. W.</strong> (2015). The long-term financial impact of electronic health record implementation. <em>Journal of the American Medical Informatics Association</em>, 22(2), 443–452.
+            <br /><a href="https://doi.org/10.1136/amiajnl-2014-002686" target="_blank" rel="noopener noreferrer">https://doi.org/10.1136/amiajnl-2014-002686</a>
+          </li>
+          <li>
+            <strong>Moore, K.</strong> (2021). The Quest for Administrative Simplification: What's Being Done. <em>Family Practice Management</em>, 28(4), 8–12.
+            <br /><a href="https://www.aafp.org/fpm/2021/0700/p8" target="_blank" rel="noopener noreferrer">https://www.aafp.org/fpm/2021/0700/p8</a>
+          </li>
+          <li>
+            <strong>Murray, L. S., et al.</strong> (2026). Evaluating the impact of artificial intelligence scribes on clinical documentation in primary care: a simulation study. <em>JAMIA Open</em>, 9(4), ooag101.
+            <br /><a href="https://academic.oup.com/jamiaopen/article/9/4/ooag101/8726639" target="_blank" rel="noopener noreferrer">https://academic.oup.com/jamiaopen/article/9/4/ooag101/8726639</a>
+          </li>
+          <li>
+            <strong>Sanmark, E., et al.</strong> (2026). Evaluation of an AI Medical Scribe After 236,153 Notes Generated Across Care Levels in a European Health System. <em>JMIR Medical Informatics</em>, 14(1), e90052.
+            <br /><a href="https://medinform.jmir.org/2026/1/e90052" target="_blank" rel="noopener noreferrer">https://medinform.jmir.org/2026/1/e90052</a>
+          </li>
+          <li>
+            <strong>Marso, A.</strong> (2022). Five Administrative Tasks Technology Could Make Easier for Physicians. <em>Family Practice Management</em>, 29(4), 15–19.
+            <br /><a href="https://www.aafp.org/fpm/2022/0700/adminisrative-tasks-made-easier" target="_blank" rel="noopener noreferrer">https://www.aafp.org/fpm/2022/0700/adminisrative-tasks-made-easier</a>
+          </li>
+        </ol>
+        <p class="privacy">
+          No PHI collected. <a href="https://saiberassist.com/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
+        </p>
+      </section>    </main>
     <script src="./app.js"></script>
   </body>
 </html>
+cd /workspaces/ROI-Calculator
+python3 -m http.server 8000
