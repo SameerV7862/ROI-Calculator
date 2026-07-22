@@ -88,17 +88,36 @@
 
         <section class="comparison">
           <h3>VA vs. In-House Medical Assistant</h3>
-          <p class="comparison-benefit" id="vaVsMaBenefit">$0</p>
-          <p class="help">
-            This compares the total VA cost against the full cost of an equivalent in-house medical assistant (salary + benefits + training).
-          </p>
-          <div class="comparison-grid">
-            <p>In-house MA salary: <strong id="maSalary">$0</strong></p>
-            <p>In-house MA benefits: <strong id="maBenefits">$0</strong></p>
-            <p>In-house MA training / onboarding: <strong id="maTraining">$0</strong></p>
-            <p>Total in-house MA cost: <strong id="maTotal">$0</strong></p>
-            <p>VA annual cost: <strong id="vaSalaryOnly">$0</strong></p>
-          </div>
+          <p class="comparison-benefit" id="vaVsMaBenefit"></p>
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Cost Component</th>
+                <th>In-House MA</th>
+                <th>Saiberassist VA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Base Salary</td>
+                <td id="maSalary">$0</td>
+                <td rowspan="3" class="va-cost-cell"><span id="vaSalaryOnly">$0</span><br/><span class="va-cost-note">all-in</span></td>
+              </tr>
+              <tr>
+                <td>Benefits</td>
+                <td id="maBenefits">$0</td>
+              </tr>
+              <tr>
+                <td>Training / Onboarding</td>
+                <td id="maTraining">$0</td>
+              </tr>
+              <tr class="comparison-total-row">
+                <td><strong>Total Annual Cost</strong></td>
+                <td><strong id="maTotal">$0</strong></td>
+                <td><strong id="vaTotalCost">$0</strong></td>
+              </tr>
+            </tbody>
+          </table>
         </section>
 
         <div class="below-fold">
@@ -157,7 +176,7 @@
           No PHI collected. <a href="https://saiberassist.com/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
         </p>
       </section>
-      <section id="citations" class="card citations">
+      <section id="citations" class="card citations hidden">
         <h2>Research &amp; Evidence Base</h2>
         <p>The ROI calculations in this tool are grounded in peer-reviewed literature on virtual medical assistants and AI-enabled clinical documentation:</p>
         <ol class="citations-list">
@@ -202,6 +221,9 @@
           No PHI collected. <a href="https://saiberassist.com/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
         </p>
       </section>    </main>
+    <div class="citations-toggle-wrap">
+      <button type="button" class="formula-link" id="citationsToggle">Research &amp; Evidence Base</button>
+    </div>
     <script src="./app.js"></script>
   </body>
 </html>

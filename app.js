@@ -40,6 +40,8 @@ const resultSection = document.getElementById("result");
 const gateSection = document.getElementById("gate");
 const formulaSection = document.getElementById("formula");
 const formulaToggleBtn = document.getElementById("formulaToggle");
+const citationsSection = document.getElementById("citations");
+const citationsToggleBtn = document.getElementById("citationsToggle");
 const netBenefitEl = document.getElementById("netBenefit");
 const extraPatientsEl = document.getElementById("extraPatients");
 const hoursBackEl = document.getElementById("hoursBack");
@@ -51,6 +53,7 @@ const maBenefitsEl = document.getElementById("maBenefits");
 const maTrainingEl = document.getElementById("maTraining");
 const maTotalEl = document.getElementById("maTotal");
 const vaSalaryOnlyEl = document.getElementById("vaSalaryOnly");
+const vaTotalCostEl = document.getElementById("vaTotalCost");
 const vaVsMaBenefitEl = document.getElementById("vaVsMaBenefit");
 
 function formatCurrency(value) {
@@ -165,49 +168,80 @@ function renderResults(values) {
   netBenefitEl.textContent = formatCurrency(values.netBenefit);
   extraPatientsEl.textContent = `+${formatNumber(values.extraPatientsPerWeek)}`;
   hoursBackEl.textContent = `+${values.recoveredHoursPerWeek.toFixed(1)}`;
-  const vaLabel = values.vaCount === 1 ? "VA" : `${values.vaCount} VAs`;
+  const vaLabel = values.vaCount === 1 ? "1 VA" : `${values.vaCount} VAs`;
   breakEvenEl.textContent = `You break even on ${vaLabel} at just ${values.breakEvenPatients} extra net-positive patient${
     values.breakEvenPatients === 1 ? "" : "s"
   } per week.`;
 
-  mathStripEl.innerHTML = `
-    <p><strong>${values.recoveredHoursPerWeek.toFixed(1)} hrs recovered</strong> × 48 weeks = <strong>${formatNumber(
-      Math.round(values.annualRecoveredHours)
-    )} hrs/year</strong></p>
-    <p>${values.visitTime} min average visit × ${constants.visitCycleMultiplier} cycle-time factor = <strong>${values.effectiveVisitCycleTime.toFixed(
-      1
-    )} effective minutes per patient</strong></p>
-    <p>${formatNumber(Math.round(values.annualRecoveredHours))} hrs ÷ ${values.effectiveVisitCycleTime.toFixed(
-      1
-    )} effective min per patient = <strong>~${formatNumber(
-      values.extraPatientsPerYear
-    )} extra patients/year</strong></p>
-    <p>${formatNumber(values.extraPatientsPerYear)} patients × ${formatCurrency(
-      values.revenuePerVisit
-    )}/visit revenue = <strong>${formatCurrency(values.additionalRevenue)} gross added revenue</strong></p>
-    <p>${formatNumber(values.extraPatientsPerYear)} patients × ${formatCurrency(
-      values.overheadPerVisit
-    )}/visit overhead = <strong>${formatCurrency(values.additionalOverhead)} added overhead</strong></p>
-    <p>${formatCurrency(values.additionalRevenue)} − ${formatCurrency(
-      values.additionalOverhead
-    )} = <strong>${formatCurrency(singleVAContribution)} contribution margin per VA</strong></p>
-    ${
-      values.vaCount > 1
-        ? `<p>${formatCurrency(singleVAContribution)} × ${values.vaCount} VAs = <strong>${formatCurrency(values.scaledMargin)} total added contribution</strong></p>`
-        : ""
-    }
-    <p>${formatCurrency(values.scaledMargin)} − ${formatCurrency(
-      values.annualVACost
-    )} VA cost = <strong>${formatCurrency(values.netBenefit)} net gain</strong></p>
-  `;
+  const layers = [
+    {
+      label: "Admin Hours Recovered",
+      calc: `${values.recoveredHoursPerWeek.toFixed(1)} hrs/wk × 48 weeks`,
+      result: `${formatNumber(Math.round(values.annualRecoveredHours))} hrs / year`,
+    },
+    {
+      label: "Effective Visit Cycle Time",
+      calc: `${values.visitTime} min visit × ${constants.visitCycleMultiplier}× cycle factor`,
+      result: `${values.effectiveVisitCycleTime.toFixed(1)} min per patient`,
+    },
+    {
+      label: "Extra Patients Unlocked",
+      calc: `${formatNumber(Math.round(values.annualRecoveredHours))} hrs ÷ ${values.effectiveVisitCycleTime.toFixed(1)} min`,
+      result: `~${formatNumber(values.extraPatientsPerYear)} patients / year`,
+    },
+    {
+      label: "Gross Added Revenue",
+      calc: `${formatNumber(values.extraPatientsPerYear)} patients × ${formatCurrency(values.revenuePerVisit)} / visit`,
+      result: formatCurrency(values.additionalRevenue),
+    },
+    {
+      label: "Added Overhead",
+      calc: `${formatNumber(values.extraPatientsPerYear)} patients × ${formatCurrency(values.overheadPerVisit)} / visit`,
+      result: formatCurrency(values.additionalOverhead),
+    },
+    {
+      label: "Contribution Margin per VA",
+      calc: `${formatCurrency(values.additionalRevenue)} − ${formatCurrency(values.additionalOverhead)}`,
+      result: formatCurrency(singleVAContribution),
+    },
+    ...(values.vaCount > 1
+      ? [{
+          label: "Total Added Contribution",
+          calc: `${formatCurrency(singleVAContribution)} × ${values.vaCount} VAs`,
+          result: formatCurrency(values.scaledMargin),
+        }]
+      : []),
+    {
+      label: "Net Gain",
+      calc: `${formatCurrency(values.scaledMargin)} − ${formatCurrency(values.annualVACost)} VA cost`,
+      result: formatCurrency(values.netBenefit),
+      highlight: true,
+    },
+  ];
+
+  mathStripEl.innerHTML = layers
+    .map(
+      (layer, i) => `
+      <div class="calc-layer${layer.highlight ? " calc-layer--highlight" : ""}">
+        <p class="calc-layer__label">${layer.label}</p>
+        <p class="calc-layer__calc">${layer.calc}</p>
+        <p class="calc-layer__result">${layer.result}</p>
+      </div>
+      ${i < layers.length - 1 ? '<div class="calc-arrow">↓</div>' : ""}
+    `
+    )
+    .join("");
 
   maSalaryEl.textContent = formatCurrency(values.inHouseMASalary);
   maBenefitsEl.textContent = formatCurrency(values.inHouseMABenefits);
   maTrainingEl.textContent = formatCurrency(values.inHouseMATraining);
   maTotalEl.textContent = formatCurrency(values.inHouseMATotal);
   vaSalaryOnlyEl.textContent = formatCurrency(values.annualVACost);
-  const advantageLabel = values.vaAdvantageVsInHouseMA >= 0 ? "advantage" : "cost difference";
-  vaVsMaBenefitEl.textContent = `VA ${advantageLabel} vs. in-house MA: ${formatCurrency(values.vaAdvantageVsInHouseMA)} / year`;
+  vaTotalCostEl.textContent = formatCurrency(values.annualVACost);
+  const savingsAmount = values.inHouseMATotal - values.annualVACost;
+  const advantageLabel = savingsAmount >= 0 ? "savings" : "premium";
+  vaVsMaBenefitEl.textContent = `VA ${advantageLabel} vs. in-house MA: ${formatCurrency(Math.abs(savingsAmount))} / year`;
+  vaVsMaBenefitEl.style.color = savingsAmount >= 0 ? "#12493f" : "#7c1a1a";
 }
 
 function readInputs() {
@@ -276,4 +310,15 @@ leadForm.addEventListener("submit", handleLeadSubmit);
 formulaToggleBtn.addEventListener("click", (event) => {
   event.preventDefault();
   formulaSection.classList.toggle("hidden");
+});
+
+citationsToggleBtn.addEventListener("click", (event) => {
+  event.preventDefault();
+  citationsSection.classList.toggle("hidden");
+  citationsToggleBtn.textContent = citationsSection.classList.contains("hidden")
+    ? "Research \u0026 Evidence Base"
+    : "Hide Research \u0026 Evidence Base";
+  if (!citationsSection.classList.contains("hidden")) {
+    citationsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 });
