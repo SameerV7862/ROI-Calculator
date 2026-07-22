@@ -165,7 +165,8 @@ function renderResults(values) {
   netBenefitEl.textContent = formatCurrency(values.netBenefit);
   extraPatientsEl.textContent = `+${formatNumber(values.extraPatientsPerWeek)}`;
   hoursBackEl.textContent = `+${values.recoveredHoursPerWeek.toFixed(1)}`;
-  breakEvenEl.textContent = `You break even on the VA at just ${values.breakEvenPatients} extra net-positive patient${
+  const vaLabel = values.vaCount === 1 ? "VA" : `${values.vaCount} VAs`;
+  breakEvenEl.textContent = `You break even on ${vaLabel} at just ${values.breakEvenPatients} extra net-positive patient${
     values.breakEvenPatients === 1 ? "" : "s"
   } per week.`;
 
@@ -205,7 +206,8 @@ function renderResults(values) {
   maTrainingEl.textContent = formatCurrency(values.inHouseMATraining);
   maTotalEl.textContent = formatCurrency(values.inHouseMATotal);
   vaSalaryOnlyEl.textContent = formatCurrency(values.annualVACost);
-  vaVsMaBenefitEl.textContent = `VA advantage vs in-house MA: ${formatCurrency(values.vaAdvantageVsInHouseMA)} / year`;
+  const advantageLabel = values.vaAdvantageVsInHouseMA >= 0 ? "advantage" : "cost difference";
+  vaVsMaBenefitEl.textContent = `VA ${advantageLabel} vs. in-house MA: ${formatCurrency(values.vaAdvantageVsInHouseMA)} / year`;
 }
 
 function readInputs() {
