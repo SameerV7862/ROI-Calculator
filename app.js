@@ -198,9 +198,10 @@ function calculate(inputs) {
 }
 
 function renderResults(values) {
+  const singleVAExtraPatientsPerWeek = Math.floor(values.extraPatientsPerWeekPerVA);
+  const singleVAExtraPatientsPerYear = singleVAExtraPatientsPerWeek * constants.weeksPerYear;
   const singleVAContribution =
-    values.extraPatientsPerWeekPerVA *
-    constants.weeksPerYear *
+    singleVAExtraPatientsPerYear *
     (values.revenuePerVisit - values.overheadPerVisit);
   netBenefitEl.textContent = formatCurrency(values.netBenefit);
   extraPatientsEl.textContent = `+${formatNumber(values.extraPatientsPerWeek)}`;
@@ -243,7 +244,7 @@ function renderResults(values) {
     },
     {
       label: "Contribution Margin (Single VA Baseline)",
-      calc: `${formatCurrency(singleVAContribution)} for 1 VA before multi-VA scaling`,
+      calc: `${formatNumber(singleVAExtraPatientsPerWeek)} patients/wk × 48 weeks × ${formatCurrency(values.revenuePerVisit - values.overheadPerVisit)} margin/visit`,
       result: formatCurrency(singleVAContribution),
     },
     {
