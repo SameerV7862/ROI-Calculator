@@ -33,13 +33,13 @@
               </select>
 
               <label for="patientsPerWeek">Patients seen per week: <span id="patientsPerWeekValue">60</span></label>
-              <input id="patientsPerWeek" name="patientsPerWeek" type="range" min="5" max="150" value="60" />
+              <input id="patientsPerWeek" name="patientsPerWeek" type="range" min="5" max="200" value="60" />
 
               <label for="adminHours">
-                Hours spent / week on admin tasks: <span id="adminHoursValue">15</span>
+                Physician hours spent per week on admin tasks (refill orders, scheduling, prior authorization, inbox): <span id="adminHoursValue">15</span>
               </label>
-              <input id="adminHours" name="adminHours" type="range" min="2" max="40" value="15" />
-              <p class="help">Best guess — after clinic and on weekends counts.</p>
+              <input id="adminHours" name="adminHours" type="range" min="2" max="50" value="15" />
+              <p class="help">Best physician-centered estimate; after clinic and weekend admin work counts.</p>
             </fieldset>
 
             <fieldset>
@@ -159,16 +159,21 @@
       <section id="formula" class="card formula hidden">
         <h2>Formula Transparency</h2>
         <p>
-          recovered_hrs = admin_hours × 0.7<br />
-          annual_recovered_hrs = recovered_hrs × 48<br />
-          effective_visit_cycle_minutes = visit_time_minutes × 2.5<br />
-          extra_patients_per_week = floor(recovered_hrs × 60 ÷ effective_visit_cycle_minutes)<br />
-          extra_patients_per_year = extra_patients_per_week × 48<br />
+          delegable_admin_hours = max(physician_admin_hours − 4, 0)<br />
+          physician_admin_hours_recovered = delegable_admin_hours × 0.7<br />
+          recovered_hours_per_week_per_va = min(physician_admin_hours_recovered, 40)<br />
+          clinical_equivalent_hours_per_va = recovered_hours_per_week_per_va × 0.3<br />
+          patients_per_admin_hour = patients_seen_per_week ÷ physician_admin_hours<br />
+          raw_extra_patients_per_week_per_va = patients_per_admin_hour × clinical_equivalent_hours_per_va<br />
+          extra_patients_per_week_per_va = min(raw_extra_patients_per_week_per_va, patients_seen_per_week × 0.2)<br />
+          va_throughput_multiplier = (1 − 0.45^va_count) ÷ (1 − 0.45)<br />
+          total_extra_patients_per_week = floor(extra_patients_per_week_per_va × va_throughput_multiplier)<br />
+          extra_patients_per_year = total_extra_patients_per_week × 48<br />
           additional_revenue = extra_patients_per_year × revenue_per_visit<br />
           additional_overhead = extra_patients_per_year × overhead_per_visit<br />
-          additional_margin = additional_revenue − additional_overhead<br />
+          additional_margin = additional_revenue − additional_overhead (already includes exponential scaling)<br />
           annual_va_cost = $19,200 × va_count<br />
-          net_benefit = (additional_margin × va_count) − annual_va_cost<br />
+          net_benefit = additional_margin − annual_va_cost<br />
           in_house_ma_total = (salary + benefits + training) × va_count<br />
           va_advantage_vs_ma = net_benefit − ((benefits + training) × va_count)
         </p>

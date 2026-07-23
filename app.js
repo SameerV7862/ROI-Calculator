@@ -2,7 +2,11 @@ const constants = {
   annualVACost: 19200,
   weeksPerYear: 48,
   absorbableAdminRate: 0.7,
-  visitCycleMultiplier: 2.5,
+  nonDelegableAdminHours: 4,
+  maxRecoveredAdminHoursPerVA: 40,
+  visitCapacityConversionRate: 0.3,
+  maxPatientUnlockSharePerVA: 0.2,
+  vaProductivityDecay: 0.45,
   annualInHouseMASalary: 42990,
   inHouseMABenefitsRate: 0.295,
   inHouseMATrainingCost: 4700,
@@ -108,18 +112,41 @@ function calculate(inputs) {
   const defaults = specialtyDefaults[inputs.specialty];
   const revenuePerVisit = inputs.revenuePerVisit || defaults.revenue;
   const overheadPerVisit = inputs.overheadPerVisit || defaults.overhead;
-  const visitTime = defaults.visitTime;
-  const effectiveVisitCycleTime = visitTime * constants.visitCycleMultiplier;
   const vaCount = inputs.vaCount || 1;
+  const safeAdminHours = Math.max(inputs.adminHours, 1);
+  const patientsPerAdminHour = inputs.patientsPerWeek / safeAdminHours;
 
-  const recoveredHoursPerWeek = inputs.adminHours * constants.absorbableAdminRate;
+  const delegableAdminHours = Math.max(
+    inputs.adminHours - constants.nonDelegableAdminHours,
+    0
+  );
+  const recoverablePhysicianAdminHours =
+    delegableAdminHours * constants.absorbableAdminRate;
+  const recoveredHoursPerWeekPerVA = Math.min(
+    recoverablePhysicianAdminHours,
+    constants.maxRecoveredAdminHoursPerVA
+  );
+  const clinicalEquivalentHoursPerVA =
+    recoveredHoursPerWeekPerVA * constants.visitCapacityConversionRate;
+  const rawExtraPatientsPerWeekPerVA =
+    patientsPerAdminHour * clinicalEquivalentHoursPerVA;
+  const maxExtraPatientsPerWeekPerVA =
+    inputs.patientsPerWeek * constants.maxPatientUnlockSharePerVA;
+  const extraPatientsPerWeekPerVA = Math.min(
+    rawExtraPatientsPerWeekPerVA,
+    maxExtraPatientsPerWeekPerVA
+  );
+  const vaThroughputMultiplier = constants.vaProductivityDecay === 1
+    ? vaCount
+    : (1 - Math.pow(constants.vaProductivityDecay, vaCount)) / (1 - constants.vaProductivityDecay);
+  const recoveredHoursPerWeek = recoveredHoursPerWeekPerVA * vaThroughputMultiplier;
   const annualRecoveredHours = recoveredHoursPerWeek * constants.weeksPerYear;
-  const extraPatientsPerWeek = Math.floor((recoveredHoursPerWeek * 60) / effectiveVisitCycleTime);
+  const extraPatientsPerWeek = Math.floor(extraPatientsPerWeekPerVA * vaThroughputMultiplier);
   const extraPatientsPerYear = extraPatientsPerWeek * constants.weeksPerYear;
   const additionalRevenue = extraPatientsPerYear * revenuePerVisit;
   const additionalOverhead = extraPatientsPerYear * overheadPerVisit;
   const additionalMargin = additionalRevenue - additionalOverhead;
-  const scaledMargin = additionalMargin * vaCount;
+  const scaledMargin = additionalMargin;
   const annualVACost = constants.annualVACost * vaCount;
   const netBenefit = scaledMargin - annualVACost;
   const roiMultiple = annualVACost > 0 ? scaledMargin / annualVACost : 0;
@@ -128,7 +155,7 @@ function calculate(inputs) {
     constants.minimumContributionPerVisit
   );
   const breakEvenPatients = Math.ceil(
-    constants.annualVACost / constants.weeksPerYear / contributionPerVisit
+    annualVACost / constants.weeksPerYear / contributionPerVisit
   );
   const inHouseMASalary = constants.annualInHouseMASalary * vaCount;
   const inHouseMABenefits = inHouseMASalary * constants.inHouseMABenefitsRate;
@@ -140,11 +167,18 @@ function calculate(inputs) {
   return {
     revenuePerVisit,
     overheadPerVisit,
-    visitTime,
-    effectiveVisitCycleTime,
     vaCount,
+    patientsPerAdminHour,
+    delegableAdminHours,
+    recoverablePhysicianAdminHours,
+    recoveredHoursPerWeekPerVA,
+    clinicalEquivalentHoursPerVA,
+    rawExtraPatientsPerWeekPerVA,
+    maxExtraPatientsPerWeekPerVA,
     recoveredHoursPerWeek,
     annualRecoveredHours,
+    extraPatientsPerWeekPerVA,
+    vaThroughputMultiplier,
     extraPatientsPerWeek,
     extraPatientsPerYear,
     additionalRevenue,
@@ -164,7 +198,10 @@ function calculate(inputs) {
 }
 
 function renderResults(values) {
-  const singleVAContribution = values.additionalMargin;
+  const singleVAContribution =
+    values.extraPatientsPerWeekPerVA *
+    constants.weeksPerYear *
+    (values.revenuePerVisit - values.overheadPerVisit);
   netBenefitEl.textContent = formatCurrency(values.netBenefit);
   extraPatientsEl.textContent = `+${formatNumber(values.extraPatientsPerWeek)}`;
   hoursBackEl.textContent = `+${values.recoveredHoursPerWeek.toFixed(1)}`;
@@ -175,18 +212,23 @@ function renderResults(values) {
 
   const layers = [
     {
-      label: "Admin Hours Recovered",
-      calc: `${values.recoveredHoursPerWeek.toFixed(1)} hrs/wk × 48 weeks`,
-      result: `${formatNumber(Math.round(values.annualRecoveredHours))} hrs / year`,
+      label: "Physician Admin Hours Recoverable",
+      calc: `${values.delegableAdminHours.toFixed(1)} delegable hrs/wk × ${Math.round(constants.absorbableAdminRate * 100)}% absorbable rate`,
+      result: `${formatNumber(Math.round(values.annualRecoveredHours))} physician hrs / year`,
     },
     {
-      label: "Effective Visit Cycle Time",
-      calc: `${values.visitTime} min visit × ${constants.visitCycleMultiplier}× cycle factor`,
-      result: `${values.effectiveVisitCycleTime.toFixed(1)} min per patient`,
+      label: "Patient Throughput From Admin Relief",
+      calc: `${formatNumber(values.patientsPerAdminHour.toFixed(2))} patients/hr × ${values.clinicalEquivalentHoursPerVA.toFixed(1)} clinical-eq hrs`,
+      result: `raw ${formatNumber(values.rawExtraPatientsPerWeekPerVA.toFixed(1))}/wk, capped at ${formatNumber(values.maxExtraPatientsPerWeekPerVA.toFixed(1))}/wk per VA`,
     },
     {
-      label: "Extra Patients Unlocked",
-      calc: `${formatNumber(Math.round(values.annualRecoveredHours))} hrs ÷ ${values.effectiveVisitCycleTime.toFixed(1)} min`,
+      label: "Exponential VA Scaling",
+      calc: `Multiplier = (1 - ${constants.vaProductivityDecay.toFixed(2)}^${values.vaCount}) ÷ (1 - ${constants.vaProductivityDecay.toFixed(2)})`,
+      result: `${values.vaCount} VAs => ${values.vaThroughputMultiplier.toFixed(2)}x effective throughput`,
+    },
+    {
+      label: "Total Extra Patients Unlocked",
+      calc: `${formatNumber(values.extraPatientsPerWeekPerVA.toFixed(1))} × ${values.vaThroughputMultiplier.toFixed(2)} × 48 weeks`,
       result: `~${formatNumber(values.extraPatientsPerYear)} patients / year`,
     },
     {
@@ -200,17 +242,15 @@ function renderResults(values) {
       result: formatCurrency(values.additionalOverhead),
     },
     {
-      label: "Contribution Margin per VA",
-      calc: `${formatCurrency(values.additionalRevenue)} − ${formatCurrency(values.additionalOverhead)}`,
+      label: "Contribution Margin (Single VA Baseline)",
+      calc: `${formatCurrency(singleVAContribution)} for 1 VA before multi-VA scaling`,
       result: formatCurrency(singleVAContribution),
     },
-    ...(values.vaCount > 1
-      ? [{
-          label: "Total Added Contribution",
-          calc: `${formatCurrency(singleVAContribution)} × ${values.vaCount} VAs`,
-          result: formatCurrency(values.scaledMargin),
-        }]
-      : []),
+    {
+      label: "Total Contribution After Scaling",
+      calc: `${formatCurrency(singleVAContribution)} × ${values.vaThroughputMultiplier.toFixed(2)} effective VA factor`,
+      result: formatCurrency(values.scaledMargin),
+    },
     {
       label: "Net Gain",
       calc: `${formatCurrency(values.scaledMargin)} − ${formatCurrency(values.annualVACost)} VA cost`,
