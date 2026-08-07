@@ -33,13 +33,13 @@
               </select>
 
               <label for="patientsPerWeek">Patients seen per week: <span id="patientsPerWeekValue">60</span></label>
-              <input id="patientsPerWeek" name="patientsPerWeek" type="range" min="5" max="150" value="60" />
+              <input id="patientsPerWeek" name="patientsPerWeek" type="range" min="5" max="200" value="60" />
 
               <label for="adminHours">
-                Hours/week on admin: <span id="adminHoursValue">15</span>
+                Physician hours spent per week on admin tasks (refill orders, scheduling, prior authorization, inbox): <span id="adminHoursValue">15</span>
               </label>
-              <input id="adminHours" name="adminHours" type="range" min="2" max="40" value="15" />
-              <p class="help">Best guess — after clinic and on weekends counts.</p>
+              <input id="adminHours" name="adminHours" type="range" min="2" max="50" value="15" />
+              <p class="help">Best physician-centered estimate; after clinic and weekend admin work counts.</p>
             </fieldset>
 
             <fieldset>
@@ -47,28 +47,24 @@
               <label for="revenuePerVisit">Average revenue per patient visit ($)</label>
               <input id="revenuePerVisit" name="revenuePerVisit" type="number" min="1" inputmode="decimal" />
 
-              <label for="physicianCount">Number of physicians in practice</label>
-              <input id="physicianCount" name="physicianCount" type="number" min="1" step="1" value="1" />
+              <label for="overheadPerVisit">Average overhead per patient visit ($)</label>
+              <input id="overheadPerVisit" name="overheadPerVisit" type="number" min="1" inputmode="decimal" />
 
-              <label for="missedAppointmentsPerWeek">Estimated missed appointments per week</label>
-              <input
-                id="missedAppointmentsPerWeek"
-                name="missedAppointmentsPerWeek"
-                type="number"
-                min="0"
-                step="1"
-                value="0"
-              />
+              <label for="vaCount">Potential number of virtual assistants for the practice</label>
+              <input id="vaCount" name="vaCount" type="number" min="1" step="1" value="1" />
 
-              <label for="priorAuthsPerWeek">Estimated prior authorizations per week</label>
-              <input id="priorAuthsPerWeek" name="priorAuthsPerWeek" type="number" min="0" step="1" value="0" />
+              <label for="missedAppointmentsPerWeek">Estimated missed appointments per week (per physician)</label>
+              <input id="missedAppointmentsPerWeek" name="missedAppointmentsPerWeek" type="number" min="0" step="1" />
+
+              <label for="priorAuthsPerWeek">Estimated prior authorizations per week (per physician)</label>
+              <input id="priorAuthsPerWeek" name="priorAuthsPerWeek" type="number" min="0" step="1" />
               <p class="help">Leave blank to use specialty defaults.</p>
             </fieldset>
           </div>
 
           <div class="actions">
             <button type="submit" class="button-primary">Calculate ROI</button>
-            <a class="formula-link" href="#formula">How we calculate this</a>
+            <button type="button" class="formula-link" id="formulaToggle">How we calculate this</button>
           </div>
           <p class="privacy">
             No PHI collected. <a href="https://saiberassist.com/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
@@ -84,7 +80,7 @@
             <p class="metric-value" id="netBenefit">$0</p>
           </article>
           <article>
-            <p class="metric-label">Extra patients/week unlocked</p>
+            <p class="metric-label">Extra patients / week unlocked</p>
             <p class="metric-value" id="extraPatients">+0</p>
           </article>
           <article>
@@ -96,8 +92,42 @@
 
         <div class="math-strip" id="mathStrip"></div>
 
+        <section class="comparison">
+          <h3>VA vs. In-House Medical Assistant</h3>
+          <p class="comparison-benefit" id="vaVsMaBenefit"></p>
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Cost Component</th>
+                <th>In-House MA</th>
+                <th>Saiberassist VA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Base Salary</td>
+                <td id="maSalary">$0</td>
+                <td rowspan="3" class="va-cost-cell"><span id="vaSalaryOnly">$0</span><br/><span class="va-cost-note">all-in</span></td>
+              </tr>
+              <tr>
+                <td>Benefits</td>
+                <td id="maBenefits">$0</td>
+              </tr>
+              <tr>
+                <td>Training / Onboarding</td>
+                <td id="maTraining">$0</td>
+              </tr>
+              <tr class="comparison-total-row">
+                <td><strong>Total Annual Cost</strong></td>
+                <td><strong id="maTotal">$0</strong></td>
+                <td><strong id="vaTotalCost">$0</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
         <div class="below-fold">
-          <h3>How we get there</h3>
+          <h3>How We Get There</h3>
           <ul>
             <li>Live scribing support during and after visits</li>
             <li>Prior authorizations and referral coordination</li>
@@ -110,7 +140,7 @@
       </section>
 
       <section id="gate" class="card gate hidden">
-        <h2>Get the full report + a 15-minute call with Dr. Reddy</h2>
+        <h2>Get the Full Report + a 15-Minute Call with The Team</h2>
         <p>See your full arithmetic breakdown and personalized summary by email.</p>
         <form id="lead-form" novalidate>
           <div class="gate-grid">
@@ -132,25 +162,82 @@
         </form>
       </section>
 
-      <section id="formula" class="card formula">
-        <h2>Formula transparency</h2>
+      <section id="formula" class="card formula hidden">
+        <h2>Formula Transparency</h2>
         <p>
-          recovered_hrs = admin_hours × 0.7<br />
-          annual_recovered_hrs = recovered_hrs × 48<br />
-          extra_patients_per_week = floor(recovered_hrs × 60 ÷ visit_time_minutes)<br />
-          extra_patients_per_year = extra_patients_per_week × 48<br />
+          delegable_admin_hours = max(physician_admin_hours − 4, 0)<br />
+          physician_admin_hours_recovered = delegable_admin_hours × 0.7<br />
+          recovered_hours_per_week_per_va = min(physician_admin_hours_recovered, 40)<br />
+          clinical_equivalent_hours_per_va = recovered_hours_per_week_per_va × 0.3<br />
+          patients_per_admin_hour = patients_seen_per_week ÷ physician_admin_hours<br />
+          raw_extra_patients_per_week_per_va = patients_per_admin_hour × clinical_equivalent_hours_per_va<br />
+          extra_patients_per_week_per_va = min(raw_extra_patients_per_week_per_va, patients_seen_per_week × 0.2)<br />
+          va_throughput_multiplier = (1 − 0.45^va_count) ÷ (1 − 0.45)<br />
+          total_extra_patients_per_week = floor(extra_patients_per_week_per_va × va_throughput_multiplier)<br />
+          extra_patients_per_year = total_extra_patients_per_week × 48<br />
+          additional_revenue = extra_patients_per_year × revenue_per_visit<br />
+          additional_overhead = extra_patients_per_year × overhead_per_visit<br />
+          additional_margin = additional_revenue − additional_overhead (already includes exponential scaling)<br />
+          annual_va_cost = $19,200 × va_count<br />
           recaptured_visits_per_year = missed_appointments_per_week × 48 × 0.35<br />
           prior_auth_revenue_per_year = prior_auths_per_week × 48 × revenue_per_visit × 0.3<br />
-          additional_revenue = ((extra_patients_per_year × 0.6) + recaptured_visits_per_year) × revenue_per_visit + prior_auth_revenue_per_year<br />
-          annual_va_cost = $19,200<br />
-          net_benefit = (additional_revenue × physician_count) − annual_va_cost<br />
-          roi_multiple = (additional_revenue × physician_count) ÷ annual_va_cost
+          refined_margin = additional_margin + ((recaptured_visits_per_year × (revenue_per_visit − overhead_per_visit)) + prior_auth_revenue_per_year)<br />
+          net_benefit = refined_margin − annual_va_cost<br />
+          in_house_ma_total = (salary + benefits + training) × va_count<br />
+          va_advantage_vs_ma = net_benefit − ((benefits + training) × va_count)
         </p>
         <p class="privacy">
           No PHI collected. <a href="https://saiberassist.com/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
         </p>
       </section>
-    </main>
-    <script src="./app.js"></script>
+      <section id="citations" class="card citations hidden">
+        <h2>Research &amp; Evidence Base</h2>
+        <p>The ROI calculations in this tool are grounded in peer-reviewed literature on virtual medical assistants and AI-enabled clinical documentation:</p>
+        <ol class="citations-list">
+          <li>
+            <strong>D'Andreamatteo, A., et al.</strong> (2020). Losing the wait: improving patient cycle time in primary care. <em>BMJ Open Quality</em>, 9(2), e000910.
+            <br /><a href="https://bmjopenquality.bmj.com/content/9/2/e000910" target="_blank" rel="noopener noreferrer">https://bmjopenquality.bmj.com/content/9/2/e000910</a>
+          </li>
+          <li>
+            <strong>U.S. Bureau of Labor Statistics.</strong> (2025). Occupational Outlook Handbook: Medical Assistants.
+            <br /><a href="https://www.bls.gov/ooh/healthcare/medical-assistants.htm" target="_blank" rel="noopener noreferrer">https://www.bls.gov/ooh/healthcare/medical-assistants.htm</a>
+          </li>
+          <li>
+            <strong>U.S. Bureau of Labor Statistics.</strong> (2025). Employer costs for employee compensation (civilian workers).
+            <br /><a href="https://www.bls.gov/news.release/ecec.htm" target="_blank" rel="noopener noreferrer">https://www.bls.gov/news.release/ecec.htm</a>
+          </li>
+          <li>
+            <strong>Society for Human Resource Management (SHRM).</strong> (2022). Human Capital Benchmarking Report (average cost per hire).
+            <br /><a href="https://www.shrm.org/topics-tools/tools/research/human-capital-benchmarking-report" target="_blank" rel="noopener noreferrer">https://www.shrm.org/topics-tools/tools/research/human-capital-benchmarking-report</a>
+          </li>
+          <li>
+            <strong>Howley, M. J., Chou, E. Y., Hansen, N., & Dalrymple, P. W.</strong> (2015). The long-term financial impact of electronic health record implementation. <em>Journal of the American Medical Informatics Association</em>, 22(2), 443–452.
+            <br /><a href="https://doi.org/10.1136/amiajnl-2014-002686" target="_blank" rel="noopener noreferrer">https://doi.org/10.1136/amiajnl-2014-002686</a>
+          </li>
+          <li>
+            <strong>Moore, K.</strong> (2021). The Quest for Administrative Simplification: What's Being Done. <em>Family Practice Management</em>, 28(4), 8–12.
+            <br /><a href="https://www.aafp.org/fpm/2021/0700/p8" target="_blank" rel="noopener noreferrer">https://www.aafp.org/fpm/2021/0700/p8</a>
+          </li>
+          <li>
+            <strong>Murray, L. S., et al.</strong> (2026). Evaluating the impact of artificial intelligence scribes on clinical documentation in primary care: a simulation study. <em>JAMIA Open</em>, 9(4), ooag101.
+            <br /><a href="https://academic.oup.com/jamiaopen/article/9/4/ooag101/8726639" target="_blank" rel="noopener noreferrer">https://academic.oup.com/jamiaopen/article/9/4/ooag101/8726639</a>
+          </li>
+          <li>
+            <strong>Sanmark, E., et al.</strong> (2026). Evaluation of an AI Medical Scribe After 236,153 Notes Generated Across Care Levels in a European Health System. <em>JMIR Medical Informatics</em>, 14(1), e90052.
+            <br /><a href="https://medinform.jmir.org/2026/1/e90052" target="_blank" rel="noopener noreferrer">https://medinform.jmir.org/2026/1/e90052</a>
+          </li>
+          <li>
+            <strong>Marso, A.</strong> (2022). Five Administrative Tasks Technology Could Make Easier for Physicians. <em>Family Practice Management</em>, 29(4), 15–19.
+            <br /><a href="https://www.aafp.org/fpm/2022/0700/adminisrative-tasks-made-easier" target="_blank" rel="noopener noreferrer">https://www.aafp.org/fpm/2022/0700/adminisrative-tasks-made-easier</a>
+          </li>
+        </ol>
+        <p class="privacy">
+          No PHI collected. <a href="https://saiberassist.com/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy policy</a>
+        </p>
+      </section>    </main>
+    <div class="citations-toggle-wrap">
+      <button type="button" class="formula-link" id="citationsToggle">Research &amp; Evidence Base</button>
+    </div>
+    <script src="./app.js?v=20260723-1"></script>
   </body>
 </html>
