@@ -52,6 +52,12 @@
 
               <label for="vaCount">Potential number of virtual assistants for the practice</label>
               <input id="vaCount" name="vaCount" type="number" min="1" step="1" value="1" />
+
+              <label for="missedAppointmentsPerWeek">Estimated missed appointments per week (per physician)</label>
+              <input id="missedAppointmentsPerWeek" name="missedAppointmentsPerWeek" type="number" min="0" step="1" />
+
+              <label for="priorAuthsPerWeek">Estimated prior authorizations per week (per physician)</label>
+              <input id="priorAuthsPerWeek" name="priorAuthsPerWeek" type="number" min="0" step="1" />
               <p class="help">Leave blank to use specialty defaults.</p>
             </fieldset>
           </div>
@@ -173,7 +179,10 @@
           additional_overhead = extra_patients_per_year × overhead_per_visit<br />
           additional_margin = additional_revenue − additional_overhead (already includes exponential scaling)<br />
           annual_va_cost = $19,200 × va_count<br />
-          net_benefit = additional_margin − annual_va_cost<br />
+          recaptured_visits_per_year = missed_appointments_per_week × 48 × 0.35<br />
+          prior_auth_revenue_per_year = prior_auths_per_week × 48 × revenue_per_visit × 0.3<br />
+          refined_margin = additional_margin + ((recaptured_visits_per_year × (revenue_per_visit − overhead_per_visit)) + prior_auth_revenue_per_year)<br />
+          net_benefit = refined_margin − annual_va_cost<br />
           in_house_ma_total = (salary + benefits + training) × va_count<br />
           va_advantage_vs_ma = net_benefit − ((benefits + training) × va_count)
         </p>

@@ -11,6 +11,9 @@ const constants = {
   inHouseMABenefitsRate: 0.295,
   inHouseMATrainingCost: 4700,
   minimumContributionPerVisit: 1,
+  convertibleCapacityRate: 0.6,
+  missedAppointmentRecoveryRate: 0.35,
+  priorAuthRevenueRetentionRate: 0.3,
 };
 
 const specialtyDefaults = {
@@ -37,6 +40,8 @@ const adminHoursInput = document.getElementById("adminHours");
 const revenuePerVisitInput = document.getElementById("revenuePerVisit");
 const overheadPerVisitInput = document.getElementById("overheadPerVisit");
 const vaCountInput = document.getElementById("vaCount");
+const missedAppointmentsPerWeekInput = document.getElementById("missedAppointmentsPerWeek");
+const priorAuthsPerWeekInput = document.getElementById("priorAuthsPerWeek");
 const patientsPerWeekValue = document.getElementById("patientsPerWeekValue");
 const adminHoursValue = document.getElementById("adminHoursValue");
 
@@ -143,13 +148,33 @@ function calculate(inputs) {
   const annualRecoveredHours = recoveredHoursPerWeek * constants.weeksPerYear;
   const extraPatientsPerWeek = Math.floor(extraPatientsPerWeekPerVA * vaThroughputMultiplier);
   const extraPatientsPerYear = extraPatientsPerWeek * constants.weeksPerYear;
+
+  const convertedCapacityVisitsPerYear = Math.floor(
+    extraPatientsPerYear * constants.convertibleCapacityRate
+  );
+  const recoveredMissedVisitsPerYear = Math.floor(
+    inputs.missedAppointmentsPerWeek * constants.weeksPerYear * constants.missedAppointmentRecoveryRate
+  );
+  const priorAuthRevenuePerYear =
+    inputs.priorAuthsPerWeek *
+    constants.weeksPerYear *
+    revenuePerVisit *
+    constants.priorAuthRevenueRetentionRate;
+
+  const convertedCapacityRevenue =
+    convertedCapacityVisitsPerYear * (revenuePerVisit - overheadPerVisit);
+  const recoveredMissedVisitMargin =
+    recoveredMissedVisitsPerYear * (revenuePerVisit - overheadPerVisit);
+
   const additionalRevenue = extraPatientsPerYear * revenuePerVisit;
   const additionalOverhead = extraPatientsPerYear * overheadPerVisit;
-  const additionalMargin = additionalRevenue - additionalOverhead;
-  const scaledMargin = additionalMargin;
+  const baseAdditionalMargin = additionalRevenue - additionalOverhead;
+  const refinedMargin =
+    convertedCapacityRevenue + recoveredMissedVisitMargin + priorAuthRevenuePerYear;
+
   const annualVACost = constants.annualVACost * vaCount;
-  const netBenefit = scaledMargin - annualVACost;
-  const roiMultiple = annualVACost > 0 ? scaledMargin / annualVACost : 0;
+  const netBenefit = refinedMargin - annualVACost;
+  const roiMultiple = annualVACost > 0 ? refinedMargin / annualVACost : 0;
   const contributionPerVisit = Math.max(
     revenuePerVisit - overheadPerVisit,
     constants.minimumContributionPerVisit
@@ -181,10 +206,13 @@ function calculate(inputs) {
     vaThroughputMultiplier,
     extraPatientsPerWeek,
     extraPatientsPerYear,
+    convertedCapacityVisitsPerYear,
+    recoveredMissedVisitsPerYear,
+    priorAuthRevenuePerYear,
     additionalRevenue,
     additionalOverhead,
-    additionalMargin,
-    scaledMargin,
+    baseAdditionalMargin,
+    refinedMargin,
     annualVACost,
     netBenefit,
     roiMultiple,
@@ -233,14 +261,29 @@ function renderResults(values) {
       result: `~${formatNumber(values.extraPatientsPerYear)} patients / year`,
     },
     {
-      label: "Gross Added Revenue",
-      calc: `${formatNumber(values.extraPatientsPerYear)} patients × ${formatCurrency(values.revenuePerVisit)} / visit`,
-      result: formatCurrency(values.additionalRevenue),
+      label: "Conservative Converted Capacity",
+      calc: `${formatNumber(values.extraPatientsPerYear)} × ${Math.round(constants.convertibleCapacityRate * 100)}% fill rate`,
+      result: `${formatNumber(values.convertedCapacityVisitsPerYear)} converted visits / year`,
     },
     {
-      label: "Added Overhead",
-      calc: `${formatNumber(values.extraPatientsPerYear)} patients × ${formatCurrency(values.overheadPerVisit)} / visit`,
-      result: formatCurrency(values.additionalOverhead),
+      label: "Recovered Missed Appointments",
+      calc: `${inputsLabel(values.recoveredMissedVisitsPerYear)} at ${Math.round(constants.missedAppointmentRecoveryRate * 100)}% recovery`,
+      result: `${formatNumber(values.recoveredMissedVisitsPerYear)} recovered visits / year`,
+    },
+    {
+      label: "Prior Authorization Revenue Retention",
+      calc: `${Math.round(constants.priorAuthRevenueRetentionRate * 100)}% retained`,
+      result: formatCurrency(values.priorAuthRevenuePerYear),
+    },
+    {
+      label: "Legacy Throughput Margin (Reference)",
+      calc: `${formatCurrency(values.additionalRevenue)} - ${formatCurrency(values.additionalOverhead)}`,
+      result: formatCurrency(values.baseAdditionalMargin),
+    },
+    {
+      label: "Refined Contribution Margin",
+      calc: "converted capacity margin + recovered missed-visit margin + retained prior-auth revenue",
+      result: formatCurrency(values.refinedMargin),
     },
     {
       label: "Contribution Margin (Single VA Baseline)",
@@ -248,13 +291,8 @@ function renderResults(values) {
       result: formatCurrency(singleVAContribution),
     },
     {
-      label: "Total Contribution After Scaling",
-      calc: `${formatCurrency(singleVAContribution)} × ${values.vaThroughputMultiplier.toFixed(2)} effective VA factor`,
-      result: formatCurrency(values.scaledMargin),
-    },
-    {
       label: "Net Gain",
-      calc: `${formatCurrency(values.scaledMargin)} − ${formatCurrency(values.annualVACost)} VA cost`,
+      calc: `${formatCurrency(values.refinedMargin)} - ${formatCurrency(values.annualVACost)} VA cost`,
       result: formatCurrency(values.netBenefit),
       highlight: true,
     },
@@ -285,6 +323,10 @@ function renderResults(values) {
   vaVsMaBenefitEl.style.color = savingsAmount >= 0 ? "#12493f" : "#7c1a1a";
 }
 
+function inputsLabel(value) {
+  return `${formatNumber(value)} visits/year`;
+}
+
 function readInputs() {
   return {
     specialty: specialtyInput.value,
@@ -293,6 +335,8 @@ function readInputs() {
     revenuePerVisit: Number(revenuePerVisitInput.value) || null,
     overheadPerVisit: Number(overheadPerVisitInput.value) || null,
     vaCount: Number(vaCountInput.value) || 1,
+    missedAppointmentsPerWeek: Number(missedAppointmentsPerWeekInput.value) || 0,
+    priorAuthsPerWeek: Number(priorAuthsPerWeekInput.value) || 0,
   };
 }
 
@@ -310,11 +354,19 @@ function handleCalcSubmit(event) {
     patientsPerWeek: inputs.patientsPerWeek,
     adminHours: inputs.adminHours,
   });
-  if (inputs.revenuePerVisit || inputs.overheadPerVisit || inputs.vaCount !== 1) {
+  if (
+    inputs.revenuePerVisit ||
+    inputs.overheadPerVisit ||
+    inputs.vaCount !== 1 ||
+    inputs.missedAppointmentsPerWeek ||
+    inputs.priorAuthsPerWeek
+  ) {
     track("step_2_completed", {
       revenuePerVisit: inputs.revenuePerVisit,
       overheadPerVisit: inputs.overheadPerVisit,
       vaCount: inputs.vaCount,
+      missedAppointmentsPerWeek: inputs.missedAppointmentsPerWeek,
+      priorAuthsPerWeek: inputs.priorAuthsPerWeek,
     });
   }
   renderResults(values);
@@ -328,7 +380,7 @@ function handleCalcSubmit(event) {
 function handleLeadSubmit(event) {
   event.preventDefault();
   if (!leadForm.reportValidity()) return;
-  gateMessageEl.textContent = "Thanks — your report is ready. Download and booking links would be delivered by email.";
+  gateMessageEl.textContent = "Thanks - your report is ready. Download and booking links would be delivered by email.";
   gateMessageEl.style.color = "#0f766e";
   track("email_submitted", {
     specialty: specialtyInput.value,
@@ -357,8 +409,8 @@ citationsToggleBtn.addEventListener("click", (event) => {
   event.preventDefault();
   citationsSection.classList.toggle("hidden");
   citationsToggleBtn.textContent = citationsSection.classList.contains("hidden")
-    ? "Research \u0026 Evidence Base"
-    : "Hide Research \u0026 Evidence Base";
+    ? "Research & Evidence Base"
+    : "Hide Research & Evidence Base";
   if (!citationsSection.classList.contains("hidden")) {
     citationsSection.scrollIntoView({ behavior: "smooth", block: "start" });
   }
