@@ -49,6 +49,19 @@
 
               <label for="physicianCount">Number of physicians in practice</label>
               <input id="physicianCount" name="physicianCount" type="number" min="1" step="1" value="1" />
+
+              <label for="missedAppointmentsPerWeek">Estimated missed appointments per week</label>
+              <input
+                id="missedAppointmentsPerWeek"
+                name="missedAppointmentsPerWeek"
+                type="number"
+                min="0"
+                step="1"
+                value="0"
+              />
+
+              <label for="priorAuthsPerWeek">Estimated prior authorizations per week</label>
+              <input id="priorAuthsPerWeek" name="priorAuthsPerWeek" type="number" min="0" step="1" value="0" />
               <p class="help">Leave blank to use specialty defaults.</p>
             </fieldset>
           </div>
@@ -126,7 +139,9 @@
           annual_recovered_hrs = recovered_hrs × 48<br />
           extra_patients_per_week = floor(recovered_hrs × 60 ÷ visit_time_minutes)<br />
           extra_patients_per_year = extra_patients_per_week × 48<br />
-          additional_revenue = extra_patients_per_year × revenue_per_visit<br />
+          recaptured_visits_per_year = missed_appointments_per_week × 48 × 0.35<br />
+          prior_auth_revenue_per_year = prior_auths_per_week × 48 × revenue_per_visit × 0.3<br />
+          additional_revenue = ((extra_patients_per_year × 0.6) + recaptured_visits_per_year) × revenue_per_visit + prior_auth_revenue_per_year<br />
           annual_va_cost = $19,200<br />
           net_benefit = (additional_revenue × physician_count) − annual_va_cost<br />
           roi_multiple = (additional_revenue × physician_count) ÷ annual_va_cost

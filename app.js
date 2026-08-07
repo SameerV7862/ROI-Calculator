@@ -2,6 +2,9 @@ const constants = {
   annualVACost: 19200,
   weeksPerYear: 48,
   absorbableAdminRate: 0.7,
+  convertableCapacityRate: 0.6,
+  missedAppointmentRecoveryRate: 0.35,
+  priorAuthRevenueRetentionRate: 0.3,
 };
 
 const specialtyDefaults = {
@@ -27,6 +30,8 @@ const patientsPerWeekInput = document.getElementById("patientsPerWeek");
 const adminHoursInput = document.getElementById("adminHours");
 const revenuePerVisitInput = document.getElementById("revenuePerVisit");
 const physicianCountInput = document.getElementById("physicianCount");
+const missedAppointmentsPerWeekInput = document.getElementById("missedAppointmentsPerWeek");
+const priorAuthsPerWeekInput = document.getElementById("priorAuthsPerWeek");
 const patientsPerWeekValue = document.getElementById("patientsPerWeekValue");
 const adminHoursValue = document.getElementById("adminHoursValue");
 
@@ -94,7 +99,20 @@ function calculate(inputs) {
   const annualRecoveredHours = recoveredHoursPerWeek * constants.weeksPerYear;
   const extraPatientsPerWeek = Math.floor((recoveredHoursPerWeek * 60) / visitTime);
   const extraPatientsPerYear = extraPatientsPerWeek * constants.weeksPerYear;
-  const additionalRevenue = extraPatientsPerYear * revenuePerVisit;
+  const convertedCapacityVisitsPerYear = Math.round(
+    extraPatientsPerYear * constants.convertableCapacityRate
+  );
+  const recoveredMissedVisitsPerYear = Math.round(
+    inputs.missedAppointmentsPerWeek * constants.weeksPerYear * constants.missedAppointmentRecoveryRate
+  );
+  const recoveredVisitRevenue =
+    (convertedCapacityVisitsPerYear + recoveredMissedVisitsPerYear) * revenuePerVisit;
+  const priorAuthRevenuePerYear =
+    inputs.priorAuthsPerWeek *
+    constants.weeksPerYear *
+    revenuePerVisit *
+    constants.priorAuthRevenueRetentionRate;
+  const additionalRevenue = recoveredVisitRevenue + priorAuthRevenuePerYear;
   const scaledRevenue = additionalRevenue * physicianCount;
   const netBenefit = scaledRevenue - constants.annualVACost;
   const roiMultiple = scaledRevenue / constants.annualVACost;
@@ -110,6 +128,9 @@ function calculate(inputs) {
     annualRecoveredHours,
     extraPatientsPerWeek,
     extraPatientsPerYear,
+    convertedCapacityVisitsPerYear,
+    recoveredMissedVisitsPerYear,
+    priorAuthRevenuePerYear,
     additionalRevenue,
     scaledRevenue,
     netBenefit,
@@ -133,8 +154,15 @@ function renderResults(values) {
     )} hrs/year</strong></p>
     <p>${formatNumber(Math.round(values.annualRecoveredHours))} hrs ÷ ${values.visitTime} min per visit = <strong>~${formatNumber(
       values.extraPatientsPerYear
-    )} extra patients/year</strong></p>
-    <p>${formatNumber(values.extraPatientsPerYear)} patients × ${formatCurrency(
+    )} gross capacity patients/year</strong></p>
+    <p>${formatNumber(values.extraPatientsPerYear)} × 60% realistic fill rate = <strong>${formatNumber(
+      values.convertedCapacityVisitsPerYear
+    )} booked visits/year</strong></p>
+    <p>Missed appointment recovery: ${formatNumber(values.recoveredMissedVisitsPerYear)} visits/year</p>
+    <p>Prior auth protection value: <strong>${formatCurrency(values.priorAuthRevenuePerYear)}/year</strong></p>
+    <p>(${formatNumber(values.convertedCapacityVisitsPerYear)} + ${formatNumber(
+      values.recoveredMissedVisitsPerYear
+    )}) visits × ${formatCurrency(
       values.revenuePerVisit
     )}/visit = <strong>${formatCurrency(singlePhysicianRevenue)} new revenue</strong></p>
     ${
@@ -155,6 +183,8 @@ function readInputs() {
     adminHours: Number(adminHoursInput.value),
     revenuePerVisit: Number(revenuePerVisitInput.value) || null,
     physicianCount: Number(physicianCountInput.value) || 1,
+    missedAppointmentsPerWeek: Number(missedAppointmentsPerWeekInput.value) || 0,
+    priorAuthsPerWeek: Number(priorAuthsPerWeekInput.value) || 0,
   };
 }
 
@@ -176,6 +206,8 @@ function handleCalcSubmit(event) {
     track("step_2_completed", {
       revenuePerVisit: inputs.revenuePerVisit,
       physicianCount: inputs.physicianCount,
+      missedAppointmentsPerWeek: inputs.missedAppointmentsPerWeek,
+      priorAuthsPerWeek: inputs.priorAuthsPerWeek,
     });
   }
   renderResults(values);
