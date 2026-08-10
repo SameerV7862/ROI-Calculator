@@ -417,55 +417,30 @@ async function handleLeadSubmit(event) {
   ];
   const csv = rows.map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
 
-  // Send via Formspree (no backend needed, free tier available)
+  // Store contact info in sessionStorage for download functions to access
   try {
-    gateMessageEl.textContent = "Sending your report...";
-    gateMessageEl.style.color = "#666";
+    sessionStorage.setItem("contactInfo", JSON.stringify({
+      fullName,
+      email,
+      phone,
+      timestamp: new Date().toISOString()
+    }));
 
-    const emailMessage = `Name: ${fullName}
-Email: ${email}
-Phone: ${phone}
-Specialty: ${inputs.specialty}
-
-NET ANNUAL BENEFIT: $${values.netBenefit.toLocaleString()}
-Extra patients/week: ${values.extraPatientsPerWeek}
-Hours back/week: ${values.hoursRecoveredPerWeek.toFixed(1)}
-Break-even: ${values.breakEvenMonths} months
-
----
-CSV Report:
-${csv}`;
-
-    // Submit to Formspree endpoint
-    const response = await fetch("https://formspree.io/f/YOUR_FORM_ID", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: fullName,
-        email: email,
-        phone: phone,
-        specialty: inputs.specialty,
-        netBenefit: values.netBenefit,
-        csvData: csv,
-        message: emailMessage,
-      }),
+    gateMessageEl.textContent = `Thanks ${fullName}! Your downloads are ready.`;
+    gateMessageEl.style.color = "#0f766e";
+    
+    // Hide the form and show download buttons
+    document.getElementById("leadFormSection").classList.add("hidden");
+    document.getElementById("downloadSection").classList.remove("hidden");
+    
+    track("lead_captured", {
+      email: email,
+      specialty: inputs.specialty,
+      netBenefit: values.netBenefit,
     });
-
-    if (response.ok) {
-      gateMessageEl.textContent = `Thanks ${fullName}! Your report has been sent to ${email}. Our team will contact you at ${phone} within 24 hours.`;
-      gateMessageEl.style.color = "#0f766e";
-      track("lead_captured", {
-        email: email,
-        specialty: inputs.specialty,
-        netBenefit: values.netBenefit,
-      });
-    } else {
-      throw new Error("Form submission failed");
-    }
   } catch (error) {
     console.error("Lead submission error:", error);
-    // Still show success - they can download manually
-    gateMessageEl.textContent = `Thanks ${fullName}! Check your email at ${email}. Our team will reach out shortly.`;
+    gateMessageEl.textContent = `Thanks ${fullName}! Your downloads are ready.`;
     gateMessageEl.style.color = "#0f766e";
   }
 }
