@@ -627,14 +627,33 @@ function downloadAsPDF() {
 
     // Use html2pdf library if available, otherwise use print dialog
     if (typeof html2pdf !== "undefined") {
-      html2pdf().setOptions({
-        margin: 10,
-        filename: `ROI-Report-${new Date().getTime()}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
-      }).from(html).save();
-      console.log("✓ PDF download via html2pdf");
+      try {
+        const element = document.createElement('div');
+        element.innerHTML = html;
+        
+        const options = {
+          margin: 10,
+          filename: `ROI-Report-${new Date().getTime()}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
+        };
+        
+        html2pdf().set(options).from(element).save().catch(err => {
+          console.warn("✓ html2pdf failed, using print dialog fallback:", err);
+          const printWindow = window.open("", "", "height=800,width=900");
+          printWindow.document.write(html);
+          printWindow.document.close();
+          printWindow.print();
+        });
+        console.log("✓ PDF download via html2pdf");
+      } catch (e) {
+        console.warn("✓ html2pdf error, using print dialog fallback:", e);
+        const printWindow = window.open("", "", "height=800,width=900");
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.print();
+      }
     } else {
       console.warn("html2pdf not loaded, using print dialog fallback");
       const printWindow = window.open("", "", "height=800,width=900");
@@ -643,8 +662,32 @@ function downloadAsPDF() {
       printWindow.print();
     }
   } catch (error) {
-    console.error("PDF download error:", error);
-    alert("Error generating PDF. Please try again.");
+    console.error("❌ PDF generation error:", error);
+    // Fallback: Open print dialog even if there's an error
+    try {
+      const fallbackHtml = `
+        <html>
+          <head><title>ROI Report</title></head>
+          <body>
+            <h1>Saiberassist ROI Calculator Report</h1>
+            <p>Generated: ${new Date().toLocaleDateString()}</p>
+            <h2>Your Results</h2>
+            <p>Net Annual Benefit: $${values.netBenefit.toLocaleString()}</p>
+            <p>Extra Patients per Week: +${values.extraPatientsPerWeek}</p>
+            <p>Hours Back per Week: +${values.hoursRecoveredPerWeek.toFixed(1)}</p>
+            <p>Break-Even: ${values.breakEvenMonths} months</p>
+          </body>
+        </html>
+      `;
+      const printWindow = window.open("", "", "height=800,width=900");
+      printWindow.document.write(fallbackHtml);
+      printWindow.document.close();
+      printWindow.print();
+      console.log("✓ Fallback print dialog opened");
+    } catch (fallbackError) {
+      console.error("❌ Even fallback failed:", fallbackError);
+      alert("Unable to generate PDF. Please try using your browser's print function (Ctrl+P / Cmd+P) instead.");
+    }
   }
 }
 
