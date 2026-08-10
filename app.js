@@ -1,3 +1,7 @@
+// Google Sheets Integration Configuration
+// Leave empty to disable, or set to your Google Apps Script deployment URL
+const GOOGLE_SHEET_WEB_APP_URL = '';
+
 const constants = {
   annualVACost: 19200,
   weeksPerYear: 48,
@@ -414,8 +418,50 @@ async function handleLeadSubmit(event) {
 
     console.log("✓ Contact info stored in sessionStorage");
 
-    gateMessageEl.textContent = `Thanks ${fullName}! Your downloads are ready.`;
-    gateMessageEl.style.color = "#0f766e";
+    // Send data to Google Sheets if configured
+    if (GOOGLE_SHEET_WEB_APP_URL) {
+      try {
+        console.log("✓ Sending data to Google Sheets...");
+        const payload = {
+          timestamp: new Date().toLocaleString(),
+          fullName,
+          email,
+          phone,
+          specialty: inputs.specialty,
+          patientsPerWeek: inputs.patientsPerWeek,
+          adminHours: inputs.adminHours,
+          revenuePerVisit: inputs.revenuePerVisit,
+          overheadPerVisit: inputs.overheadPerVisit,
+          vaCount: inputs.vaCount,
+          missedAppointmentsPerWeek: inputs.missedAppointmentsPerWeek,
+          priorAuthsPerWeek: inputs.priorAuthsPerWeek,
+          netBenefit: values.netBenefit,
+          extraPatients: values.extraPatientsPerWeek,
+          hoursRecovered: values.hoursRecoveredPerWeek,
+          breakEven: values.breakEvenMonths
+        };
+        
+        // Use fetch with CORS mode to send data
+        fetch(GOOGLE_SHEET_WEB_APP_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: JSON.stringify(payload),
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }).then(() => {
+          console.log("✓ Data sent to Google Sheets successfully");
+        }).catch(err => {
+          console.warn("⚠ Google Sheets submission failed (non-blocking):", err);
+          // Don't throw - form should still work even if Google Sheets fails
+        });
+      } catch (gsError) {
+        console.warn("⚠ Google Sheets error (non-blocking):", gsError);
+        // Continue anyway - Google Sheets is optional
+      }
+    }
+
+    console.log("✓ Contact info stored in sessionStorage");
     
     // Hide the form and show download buttons
     const leadFormSection = document.getElementById("leadFormSection");
@@ -490,6 +536,12 @@ function downloadAsCSV() {
     const inputs = readInputs();
     const values = calculate(inputs);
     
+    // Safely extract values with fallbacks
+    const hoursRecovered = (values.recoveredHoursPerWeek || 0).toFixed(1);
+    const breakEvenMonths = values.breakEvenPatients > 0
+      ? Math.ceil((values.breakEvenPatients / Math.max(inputs.patientsPerWeek, 1)) * 4)
+      : "N/A";
+    
     const rows = [
       ["ROI Calculator Results", new Date().toLocaleDateString()],
       [],
@@ -506,15 +558,15 @@ function downloadAsCSV() {
       ["KEY RESULTS"],
       ["Net Annual Benefit ($)", values.netBenefit],
       ["Extra Patients per Week", values.extraPatientsPerWeek],
-      ["Hours Back per Week", values.hoursRecoveredPerWeek.toFixed(1)],
-      ["Break-even months", values.breakEvenMonths],
+      ["Hours Back per Week", hoursRecovered],
+      ["Break-even months", breakEvenMonths],
       [],
       ["REVENUE BREAKDOWN"],
       ["Additional Revenue (annual)", values.additionalRevenue],
       ["Additional Overhead (annual)", values.additionalOverhead],
       ["Missed Appointment Recovery", values.missedAppointmentMargin],
       ["Prior Auth Revenue", values.priorAuthMargin],
-      ["Total VA Cost", values.totalVACost],
+      ["Total VA Cost", values.annualVACost],
     ];
 
     const csv = rows.map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
@@ -537,114 +589,175 @@ function downloadAsCSV() {
 
 function downloadAsPDF() {
   try {
+    console.log("✓ Starting PDF generation...");
     const inputs = readInputs();
     const values = calculate(inputs);
     
-    const docTitle = "Saiberassist ROI Calculator Report";
+    // Safely extract/compute values with fallbacks
+    const hoursRecovered = (values.recoveredHoursPerWeek || 0).toFixed(1);
+    const breakEvenMonths = values.breakEvenPatients > 0 
+      ? Math.ceil((values.breakEvenPatients / Math.max(inputs.patientsPerWeek, 1)) * 4) 
+      : "N/A";
+    const netBenefit = values.netBenefit || 0;
+    const extraPatients = values.extraPatientsPerWeek || 0;
+    const additionalRevenue = values.additionalRevenue || 0;
+    const additionalOverhead = values.additionalOverhead || 0;
+    const totalVACost = values.annualVACost || 0;
+    const missedAppointmentMargin = values.missedAppointmentMargin || 0;
+    const priorAuthMargin = values.priorAuthMargin || 0;
+    
     const timestamp = new Date().toLocaleDateString();
     
-    let html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>${docTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; padding: 20px; }
-          h1 { color: #332058; border-bottom: 3px solid #33bca8; padding-bottom: 10px; }
-          h2 { color: #332058; margin-top: 20px; }
-          .section { margin: 20px 0; }
-          .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
-          .metric { border: 1px solid #ddd; padding: 12px; border-radius: 8px; background: #f9f9f9; }
-          .metric-label { font-size: 12px; color: #666; margin-bottom: 5px; }
-          .metric-value { font-size: 20px; font-weight: bold; color: #33bca8; }
-          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-          th { background: #332058; color: white; }
-          .footer { margin-top: 30px; font-size: 12px; color: #999; border-top: 1px solid #ddd; padding-top: 15px; }
-        </style>
-      </head>
-      <body>
-        <h1>${docTitle}</h1>
-        <p><strong>Generated:</strong> ${timestamp}</p>
-        
-        <div class="section">
-          <h2>Your Estimate</h2>
-          <div class="metrics">
+    // Create simple PDF-compatible HTML
+    const pdfContent = `
+      <html>
+        <head>
+          <title>ROI Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 40px; background: white; }
+            h1 { color: #332058; font-size: 28px; border-bottom: 3px solid #33bca8; padding-bottom: 15px; }
+            h2 { color: #332058; font-size: 18px; margin-top: 30px; }
+            .section { margin: 20px 0; }
+            .metric { margin: 10px 0; font-size: 14px; }
+            .label { font-weight: bold; display: inline-block; width: 250px; }
+            .value { color: #33bca8; font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }
+            th { background: #332058; color: white; padding: 10px; text-align: left; }
+            td { border: 1px solid #ddd; padding: 10px; }
+            .footer { margin-top: 40px; font-size: 11px; color: #999; border-top: 1px solid #ddd; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <h1>Saiberassist ROI Calculator Report</h1>
+          <p><strong>Generated:</strong> ${timestamp}</p>
+          
+          <div class="section">
+            <h2>Your ROI Estimate</h2>
             <div class="metric">
-              <div class="metric-label">Net Annual Benefit</div>
-              <div class="metric-value">$${values.netBenefit.toLocaleString()}</div>
+              <span class="label">Net Annual Benefit:</span>
+              <span class="value">$${netBenefit.toLocaleString()}</span>
             </div>
             <div class="metric">
-              <div class="metric-label">Extra Patients / Week</div>
-              <div class="metric-value">+${values.extraPatientsPerWeek}</div>
+              <span class="label">Extra Patients per Week:</span>
+              <span class="value">+${extraPatients}</span>
             </div>
             <div class="metric">
-              <div class="metric-label">Hours Back / Week</div>
-              <div class="metric-value">+${values.hoursRecoveredPerWeek.toFixed(1)}</div>
+              <span class="label">Hours Recovered per Week:</span>
+              <span class="value">+${hoursRecovered}</span>
             </div>
             <div class="metric">
-              <div class="metric-label">Break-Even</div>
-              <div class="metric-value">${values.breakEvenMonths} months</div>
+              <span class="label">Break-Even Point:</span>
+              <span class="value">${breakEvenMonths} months</span>
             </div>
           </div>
-        </div>
-
-        <div class="section">
-          <h2>Input Parameters</h2>
-          <table>
-            <tr><td><strong>Specialty</strong></td><td>${inputs.specialty}</td></tr>
-            <tr><td><strong>Patients per week</strong></td><td>${inputs.patientsPerWeek}</td></tr>
-            <tr><td><strong>Admin hours per week</strong></td><td>${inputs.adminHours}</td></tr>
-            <tr><td><strong>Revenue per visit</strong></td><td>$${inputs.revenuePerVisit || "Default"}</td></tr>
-            <tr><td><strong>Overhead per visit</strong></td><td>$${inputs.overheadPerVisit || "Default"}</td></tr>
-            <tr><td><strong>Number of VAs</strong></td><td>${inputs.vaCount}</td></tr>
-            <tr><td><strong>Missed appointments per week</strong></td><td>${inputs.missedAppointmentsPerWeek || "0"}</td></tr>
-            <tr><td><strong>Prior authorizations per week</strong></td><td>${inputs.priorAuthsPerWeek || "0"}</td></tr>
-          </table>
-        </div>
-
-        <div class="section">
-          <h2>Financial Breakdown</h2>
-          <table>
-            <tr><th>Component</th><th>Annual Amount</th></tr>
-            <tr><td>Additional Revenue</td><td>$${values.additionalRevenue.toLocaleString()}</td></tr>
-            <tr><td>Additional Overhead</td><td>$${values.additionalOverhead.toLocaleString()}</td></tr>
-            <tr><td>Missed Appointment Recovery</td><td>$${values.missedAppointmentMargin.toLocaleString()}</td></tr>
-            <tr><td>Prior Auth Revenue</td><td>$${values.priorAuthMargin.toLocaleString()}</td></tr>
-            <tr style="background: #f0f0f0;"><td><strong>Total Margin</strong></td><td><strong>$${(values.additionalRevenue - values.additionalOverhead + values.missedAppointmentMargin + values.priorAuthMargin).toLocaleString()}</strong></td></tr>
-            <tr><td>Total VA Cost</td><td>$${values.totalVACost.toLocaleString()}</td></tr>
-            <tr style="background: #e8f5f2;"><td><strong>Net Annual Benefit</strong></td><td><strong style="color: #33bca8;">$${values.netBenefit.toLocaleString()}</strong></td></tr>
-          </table>
-        </div>
-
-        <div class="footer">
-          <p>This report was generated by the Saiberassist ROI Calculator. For more information, visit https://saiberassist.com/</p>
-          <p>No PHI collected. See our <a href="https://saiberassist.com/privacy-policy/">privacy policy</a> for details.</p>
-        </div>
-      </body>
-    </html>
-  `;
-
-    // Use html2pdf library if available, otherwise use print dialog
+          
+          <div class="section">
+            <h2>Financial Summary</h2>
+            <table>
+              <tr>
+                <th>Component</th>
+                <th>Annual Amount</th>
+              </tr>
+              <tr>
+                <td>Additional Revenue</td>
+                <td>$${additionalRevenue.toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td>Additional Overhead</td>
+                <td>-$${additionalOverhead.toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td>Missed Appointment Recovery</td>
+                <td>$${missedAppointmentMargin.toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td>Prior Auth Revenue</td>
+                <td>$${priorAuthMargin.toLocaleString()}</td>
+              </tr>
+              <tr style="background: #f0f0f0;">
+                <td><strong>Total VA Cost</strong></td>
+                <td><strong>-$${totalVACost.toLocaleString()}</strong></td>
+              </tr>
+              <tr style="background: #e8f5f2;">
+                <td><strong>NET BENEFIT</strong></td>
+                <td><strong style="color: #33bca8;">$${netBenefit.toLocaleString()}</strong></td>
+              </tr>
+            </table>
+          </div>
+          
+          <div class="section">
+            <h2>Your Inputs</h2>
+            <div class="metric">
+              <span class="label">Specialty:</span>
+              <span>${inputs.specialty}</span>
+            </div>
+            <div class="metric">
+              <span class="label">Patients per Week:</span>
+              <span>${inputs.patientsPerWeek}</span>
+            </div>
+            <div class="metric">
+              <span class="label">Admin Hours per Week:</span>
+              <span>${inputs.adminHours}</span>
+            </div>
+            <div class="metric">
+              <span class="label">Number of VAs:</span>
+              <span>${inputs.vaCount}</span>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p>This report was generated by the Saiberassist ROI Calculator.</p>
+            <p>Visit https://saiberassist.com/ for more information.</p>
+            <p>No PHI collected. See our privacy policy for details.</p>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    // Method 1: Try using html2pdf if available
     if (typeof html2pdf !== "undefined") {
-      html2pdf().setOptions({
-        margin: 10,
-        filename: `ROI-Report-${new Date().getTime()}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
-      }).from(html).save();
-      console.log("✓ PDF download via html2pdf");
+      try {
+        console.log("✓ Using html2pdf library");
+        html2pdf().set({
+          margin: 10,
+          filename: `ROI-Report-${new Date().getTime()}.pdf`,
+          html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+          jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+        }).from(pdfContent).save().then(() => {
+          console.log("✓ PDF saved successfully");
+        }).catch(err => {
+          console.warn("⚠ html2pdf save failed, trying print dialog:", err);
+          fallbackPrint(pdfContent);
+        });
+      } catch (e) {
+        console.warn("⚠ html2pdf error:", e);
+        fallbackPrint(pdfContent);
+      }
     } else {
-      console.warn("html2pdf not loaded, using print dialog fallback");
-      const printWindow = window.open("", "", "height=800,width=900");
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.print();
+      console.log("⚠ html2pdf not available, using print dialog");
+      fallbackPrint(pdfContent);
     }
+    
   } catch (error) {
-    console.error("PDF download error:", error);
-    alert("Error generating PDF. Please try again.");
+    console.error("❌ PDF error:", error);
+    alert("Unable to generate PDF. Using print dialog instead (Ctrl+P).");
+    window.print();
+  }
+}
+
+function fallbackPrint(htmlContent) {
+  try {
+    const win = window.open("", "PRINT", "height=800,width=900");
+    win.document.write(htmlContent);
+    win.document.close();
+    win.focus();
+    setTimeout(() => {
+      win.print();
+    }, 250);
+    console.log("✓ Print dialog opened");
+  } catch (e) {
+    console.error("❌ Print dialog error:", e);
+    window.print();
   }
 }
 
