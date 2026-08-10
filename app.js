@@ -379,69 +379,81 @@ function handleCalcSubmit(event) {
 
 async function handleLeadSubmit(event) {
   event.preventDefault();
-  if (!leadForm.reportValidity()) return;
+  console.log("✓ handleLeadSubmit called");
+  
+  if (!leadForm.reportValidity()) {
+    console.warn("⚠ Form validation failed");
+    return;
+  }
 
   const fullName = document.getElementById("fullName").value;
   const email = document.getElementById("email").value;
   const phone = document.getElementById("phone").value;
 
-  const inputs = readInputs();
-  const values = calculate(inputs);
+  console.log("✓ Form values captured:", { fullName, email, phone });
 
-  // Generate CSV content
-  const rows = [
-    ["ROI Calculator Results", new Date().toLocaleDateString()],
-    [],
-    ["INPUT PARAMETERS"],
-    ["Specialty", inputs.specialty],
-    ["Patients per week", inputs.patientsPerWeek],
-    ["Admin hours per week", inputs.adminHours],
-    ["Revenue per visit ($)", inputs.revenuePerVisit || "Default"],
-    ["Overhead per visit ($)", inputs.overheadPerVisit || "Default"],
-    ["Number of VAs", inputs.vaCount],
-    ["Missed appointments per week", inputs.missedAppointmentsPerWeek || "0"],
-    ["Prior authorizations per week", inputs.priorAuthsPerWeek || "0"],
-    [],
-    ["KEY RESULTS"],
-    ["Net Annual Benefit ($)", values.netBenefit],
-    ["Extra Patients per Week", values.extraPatientsPerWeek],
-    ["Hours Back per Week", values.hoursRecoveredPerWeek.toFixed(1)],
-    ["Break-even months", values.breakEvenMonths],
-    [],
-    ["REVENUE BREAKDOWN"],
-    ["Additional Revenue (annual)", values.additionalRevenue],
-    ["Additional Overhead (annual)", values.additionalOverhead],
-    ["Missed Appointment Recovery", values.missedAppointmentMargin],
-    ["Prior Auth Revenue", values.priorAuthMargin],
-    ["Total VA Cost", values.totalVACost],
-  ];
-  const csv = rows.map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
-
-  // Store contact info in sessionStorage for download functions to access
   try {
+    const inputs = readInputs();
+    const values = calculate(inputs);
+
+    console.log("✓ ROI calculated");
+
+    // Store contact info in sessionStorage for download functions to access
     sessionStorage.setItem("contactInfo", JSON.stringify({
       fullName,
       email,
       phone,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      roi: {
+        netBenefit: values.netBenefit,
+        extraPatients: values.extraPatientsPerWeek,
+        hoursBack: values.hoursRecoveredPerWeek,
+        breakEven: values.breakEvenMonths
+      }
     }));
+
+    console.log("✓ Contact info stored in sessionStorage");
 
     gateMessageEl.textContent = `Thanks ${fullName}! Your downloads are ready.`;
     gateMessageEl.style.color = "#0f766e";
     
     // Hide the form and show download buttons
-    document.getElementById("leadFormSection").classList.add("hidden");
-    document.getElementById("downloadSection").classList.remove("hidden");
+    const leadFormSection = document.getElementById("leadFormSection");
+    const downloadSection = document.getElementById("downloadSection");
+    
+    if (leadFormSection) {
+      leadFormSection.classList.add("hidden");
+      console.log("✓ Form section hidden");
+    } else {
+      console.warn("⚠ leadFormSection not found");
+    }
+    
+    if (downloadSection) {
+      downloadSection.classList.remove("hidden");
+      console.log("✓ Download section shown");
+    } else {
+      console.warn("⚠ downloadSection not found");
+    }
     
     track("lead_captured", {
       email: email,
       specialty: inputs.specialty,
       netBenefit: values.netBenefit,
     });
+    
+    console.log("✓ Contact form submission complete");
   } catch (error) {
-    console.error("Lead submission error:", error);
-    gateMessageEl.textContent = `Thanks ${fullName}! Your downloads are ready.`;
+    console.error("❌ Lead submission error:", error);
+    gateMessageEl.textContent = `Thanks! Your downloads are ready.`;
     gateMessageEl.style.color = "#0f766e";
+    
+    // Still show downloads even if there's an error
+    try {
+      document.getElementById("leadFormSection").classList.add("hidden");
+      document.getElementById("downloadSection").classList.remove("hidden");
+    } catch (e) {
+      console.error("Error showing download section:", e);
+    }
   }
 }
 
@@ -636,6 +648,33 @@ function downloadAsPDF() {
   }
 }
 
+function downloadContact() {
+  try {
+    const contactInfo = sessionStorage.getItem("contactInfo");
+    if (!contactInfo) {
+      alert("No contact information found. Please fill out the contact form first.");
+      return;
+    }
+    
+    const data = JSON.parse(contactInfo);
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Contact-Info-${new Date().getTime()}.json`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    console.log("✓ Contact info download started");
+  } catch (error) {
+    console.error("Contact download error:", error);
+    alert("Error downloading contact info. Please try again.");
+  }
+}
+
 // Attach download event listeners safely
 const downloadCSVBtn = document.getElementById("downloadCSV");
 const downloadPDFBtn = document.getElementById("downloadPDF");
@@ -652,5 +691,13 @@ if (downloadPDFBtn) {
   console.log("✓ PDF download listener attached");
 } else {
   console.warn("⚠ Download PDF button not found");
+}
+
+const downloadContactBtn = document.getElementById("downloadContact");
+if (downloadContactBtn) {
+  downloadContactBtn.addEventListener("click", downloadContact);
+  console.log("✓ Contact download listener attached");
+} else {
+  console.warn("⚠ Download Contact button not found");
 }
 
