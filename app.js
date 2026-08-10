@@ -1,3 +1,7 @@
+// Google Sheets Integration Configuration
+// Leave empty to disable, or set to your Google Apps Script deployment URL
+const GOOGLE_SHEET_WEB_APP_URL = '';
+
 const constants = {
   annualVACost: 19200,
   weeksPerYear: 48,
@@ -414,8 +418,50 @@ async function handleLeadSubmit(event) {
 
     console.log("✓ Contact info stored in sessionStorage");
 
-    gateMessageEl.textContent = `Thanks ${fullName}! Your downloads are ready.`;
-    gateMessageEl.style.color = "#0f766e";
+    // Send data to Google Sheets if configured
+    if (GOOGLE_SHEET_WEB_APP_URL) {
+      try {
+        console.log("✓ Sending data to Google Sheets...");
+        const payload = {
+          timestamp: new Date().toLocaleString(),
+          fullName,
+          email,
+          phone,
+          specialty: inputs.specialty,
+          patientsPerWeek: inputs.patientsPerWeek,
+          adminHours: inputs.adminHours,
+          revenuePerVisit: inputs.revenuePerVisit,
+          overheadPerVisit: inputs.overheadPerVisit,
+          vaCount: inputs.vaCount,
+          missedAppointmentsPerWeek: inputs.missedAppointmentsPerWeek,
+          priorAuthsPerWeek: inputs.priorAuthsPerWeek,
+          netBenefit: values.netBenefit,
+          extraPatients: values.extraPatientsPerWeek,
+          hoursRecovered: values.hoursRecoveredPerWeek,
+          breakEven: values.breakEvenMonths
+        };
+        
+        // Use fetch with CORS mode to send data
+        fetch(GOOGLE_SHEET_WEB_APP_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: JSON.stringify(payload),
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }).then(() => {
+          console.log("✓ Data sent to Google Sheets successfully");
+        }).catch(err => {
+          console.warn("⚠ Google Sheets submission failed (non-blocking):", err);
+          // Don't throw - form should still work even if Google Sheets fails
+        });
+      } catch (gsError) {
+        console.warn("⚠ Google Sheets error (non-blocking):", gsError);
+        // Continue anyway - Google Sheets is optional
+      }
+    }
+
+    console.log("✓ Contact info stored in sessionStorage");
     
     // Hide the form and show download buttons
     const leadFormSection = document.getElementById("leadFormSection");
@@ -537,157 +583,187 @@ function downloadAsCSV() {
 
 function downloadAsPDF() {
   try {
+    console.log("✓ Starting PDF generation...");
     const inputs = readInputs();
     const values = calculate(inputs);
     
-    const docTitle = "Saiberassist ROI Calculator Report";
     const timestamp = new Date().toLocaleDateString();
     
-    let html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>${docTitle}</title>
-        <style>
-          body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; padding: 20px; }
-          h1 { color: #332058; border-bottom: 3px solid #33bca8; padding-bottom: 10px; }
-          h2 { color: #332058; margin-top: 20px; }
-          .section { margin: 20px 0; }
-          .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
-          .metric { border: 1px solid #ddd; padding: 12px; border-radius: 8px; background: #f9f9f9; }
-          .metric-label { font-size: 12px; color: #666; margin-bottom: 5px; }
-          .metric-value { font-size: 20px; font-weight: bold; color: #33bca8; }
-          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-          th { background: #332058; color: white; }
-          .footer { margin-top: 30px; font-size: 12px; color: #999; border-top: 1px solid #ddd; padding-top: 15px; }
-        </style>
-      </head>
-      <body>
-        <h1>${docTitle}</h1>
-        <p><strong>Generated:</strong> ${timestamp}</p>
+    // Create PDF using jsPDF with simpler approach
+    if (typeof jsPDF !== "undefined") {
+      console.log("✓ Using jsPDF for PDF generation");
+      const { jsPDF: jsPDFLib } = window.jsPDF;
+      const doc = new jsPDFLib();
+      
+      // Set up document
+      doc.setFillColor(51, 32, 88); // Dark purple background
+      doc.rect(0, 0, 210, 40, 'F');
+      
+      // Title
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.text("Saiberassist ROI Calculator Report", 15, 25);
+      
+      // Reset text color
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(10);
+      doc.text(`Generated: ${timestamp}`, 15, 45);
+      
+      let yPosition = 55;
+      
+      // Key Metrics Section
+      doc.setFontSize(14);
+      doc.setTextColor(51, 32, 88);
+      doc.text("Your ROI Estimate", 15, yPosition);
+      yPosition += 10;
+      
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      const metrics = [
+        [`Net Annual Benefit:`, `$${values.netBenefit.toLocaleString()}`],
+        [`Extra Patients / Week:`, `+${values.extraPatientsPerWeek}`],
+        [`Hours Recovered / Week:`, `+${values.hoursRecoveredPerWeek.toFixed(1)}`],
+        [`Break-Even Point:`, `${values.breakEvenMonths} months`]
+      ];
+      
+      metrics.forEach(([label, value]) => {
+        doc.setFont(undefined, 'bold');
+        doc.text(label, 15, yPosition);
+        doc.setFont(undefined, 'normal');
+        doc.text(value, 120, yPosition);
+        yPosition += 7;
+      });
+      
+      yPosition += 5;
+      
+      // Input Parameters Section
+      doc.setFontSize(14);
+      doc.setTextColor(51, 32, 88);
+      doc.text("Input Parameters", 15, yPosition);
+      yPosition += 10;
+      
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      const inputs_list = [
+        [`Specialty:`, inputs.specialty],
+        [`Patients per Week:`, inputs.patientsPerWeek],
+        [`Admin Hours per Week:`, inputs.adminHours],
+        [`Revenue per Visit:`, `$${inputs.revenuePerVisit || "Default"}`],
+        [`Overhead per Visit:`, `$${inputs.overheadPerVisit || "Default"}`],
+        [`Number of VAs:`, inputs.vaCount],
+        [`Missed Appts/Week:`, inputs.missedAppointmentsPerWeek || "0"],
+        [`Prior Auths/Week:`, inputs.priorAuthsPerWeek || "0"]
+      ];
+      
+      inputs_list.forEach(([label, value]) => {
+        if (yPosition > 270) {
+          doc.addPage();
+          yPosition = 15;
+        }
+        doc.setFont(undefined, 'bold');
+        doc.text(label, 15, yPosition);
+        doc.setFont(undefined, 'normal');
+        doc.text(String(value), 100, yPosition);
+        yPosition += 6;
+      });
+      
+      yPosition += 5;
+      
+      // Financial Breakdown
+      doc.setFontSize(14);
+      doc.setTextColor(51, 32, 88);
+      doc.text("Financial Breakdown", 15, yPosition);
+      yPosition += 10;
+      
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      const breakdown = [
+        [`Additional Revenue:`, `$${values.additionalRevenue.toLocaleString()}`],
+        [`Additional Overhead:`, `-$${values.additionalOverhead.toLocaleString()}`],
+        [`Missed Appt Recovery:`, `$${values.missedAppointmentMargin.toLocaleString()}`],
+        [`Prior Auth Revenue:`, `$${values.priorAuthMargin.toLocaleString()}`],
+        [`VA Annual Cost:`, `-$${values.totalVACost.toLocaleString()}`],
+        [`NET BENEFIT:`, `$${values.netBenefit.toLocaleString()}`]
+      ];
+      
+      breakdown.forEach(([label, value], index) => {
+        if (yPosition > 270) {
+          doc.addPage();
+          yPosition = 15;
+        }
+        if (index === breakdown.length - 1) {
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(51, 188, 168);
+          doc.setFontSize(12);
+        } else {
+          doc.setFont(undefined, index === 0 ? 'bold' : 'normal');
+          doc.setTextColor(0, 0, 0);
+          doc.setFontSize(10);
+        }
+        doc.text(label, 15, yPosition);
+        doc.text(value, 120, yPosition);
+        yPosition += 7;
+      });
+      
+      // Footer
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text("Saiberassist ROI Calculator | https://saiberassist.com/", 15, 285);
+      
+      // Save the PDF
+      doc.save(`ROI-Report-${new Date().getTime()}.pdf`);
+      console.log("✓ PDF downloaded successfully via jsPDF");
+    } else {
+      // Fallback to html2pdf
+      console.log("✓ jsPDF not available, trying html2pdf");
+      if (typeof html2pdf !== "undefined") {
+        // Simpler HTML for html2pdf
+        const simpleHtml = `
+          <html>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+              <h1 style="color: #332058; border-bottom: 3px solid #33bca8; padding-bottom: 10px;">
+                Saiberassist ROI Calculator Report
+              </h1>
+              <p><strong>Generated:</strong> ${timestamp}</p>
+              
+              <h2 style="color: #332058; margin-top: 20px;">Your Estimate</h2>
+              <p><strong>Net Annual Benefit:</strong> $${values.netBenefit.toLocaleString()}</p>
+              <p><strong>Extra Patients / Week:</strong> +${values.extraPatientsPerWeek}</p>
+              <p><strong>Hours Back / Week:</strong> +${values.hoursRecoveredPerWeek.toFixed(1)}</p>
+              <p><strong>Break-Even:</strong> ${values.breakEvenMonths} months</p>
+              
+              <h2 style="color: #332058; margin-top: 20px;">Financial Summary</h2>
+              <p>Additional Revenue: $${values.additionalRevenue.toLocaleString()}</p>
+              <p>Additional Overhead: $${values.additionalOverhead.toLocaleString()}</p>
+              <p>Missed Appointment Recovery: $${values.missedAppointmentMargin.toLocaleString()}</p>
+              <p>Prior Auth Revenue: $${values.priorAuthMargin.toLocaleString()}</p>
+              <p><strong>Total VA Cost:</strong> $${values.totalVACost.toLocaleString()}</p>
+              
+              <hr style="margin-top: 30px;">
+              <p style="font-size: 12px; color: #999;">
+                This report was generated by the Saiberassist ROI Calculator.<br/>
+                Visit https://saiberassist.com/ for more information.
+              </p>
+            </body>
+          </html>
+        `;
         
-        <div class="section">
-          <h2>Your Estimate</h2>
-          <div class="metrics">
-            <div class="metric">
-              <div class="metric-label">Net Annual Benefit</div>
-              <div class="metric-value">$${values.netBenefit.toLocaleString()}</div>
-            </div>
-            <div class="metric">
-              <div class="metric-label">Extra Patients / Week</div>
-              <div class="metric-value">+${values.extraPatientsPerWeek}</div>
-            </div>
-            <div class="metric">
-              <div class="metric-label">Hours Back / Week</div>
-              <div class="metric-value">+${values.hoursRecoveredPerWeek.toFixed(1)}</div>
-            </div>
-            <div class="metric">
-              <div class="metric-label">Break-Even</div>
-              <div class="metric-value">${values.breakEvenMonths} months</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <h2>Input Parameters</h2>
-          <table>
-            <tr><td><strong>Specialty</strong></td><td>${inputs.specialty}</td></tr>
-            <tr><td><strong>Patients per week</strong></td><td>${inputs.patientsPerWeek}</td></tr>
-            <tr><td><strong>Admin hours per week</strong></td><td>${inputs.adminHours}</td></tr>
-            <tr><td><strong>Revenue per visit</strong></td><td>$${inputs.revenuePerVisit || "Default"}</td></tr>
-            <tr><td><strong>Overhead per visit</strong></td><td>$${inputs.overheadPerVisit || "Default"}</td></tr>
-            <tr><td><strong>Number of VAs</strong></td><td>${inputs.vaCount}</td></tr>
-            <tr><td><strong>Missed appointments per week</strong></td><td>${inputs.missedAppointmentsPerWeek || "0"}</td></tr>
-            <tr><td><strong>Prior authorizations per week</strong></td><td>${inputs.priorAuthsPerWeek || "0"}</td></tr>
-          </table>
-        </div>
-
-        <div class="section">
-          <h2>Financial Breakdown</h2>
-          <table>
-            <tr><th>Component</th><th>Annual Amount</th></tr>
-            <tr><td>Additional Revenue</td><td>$${values.additionalRevenue.toLocaleString()}</td></tr>
-            <tr><td>Additional Overhead</td><td>$${values.additionalOverhead.toLocaleString()}</td></tr>
-            <tr><td>Missed Appointment Recovery</td><td>$${values.missedAppointmentMargin.toLocaleString()}</td></tr>
-            <tr><td>Prior Auth Revenue</td><td>$${values.priorAuthMargin.toLocaleString()}</td></tr>
-            <tr style="background: #f0f0f0;"><td><strong>Total Margin</strong></td><td><strong>$${(values.additionalRevenue - values.additionalOverhead + values.missedAppointmentMargin + values.priorAuthMargin).toLocaleString()}</strong></td></tr>
-            <tr><td>Total VA Cost</td><td>$${values.totalVACost.toLocaleString()}</td></tr>
-            <tr style="background: #e8f5f2;"><td><strong>Net Annual Benefit</strong></td><td><strong style="color: #33bca8;">$${values.netBenefit.toLocaleString()}</strong></td></tr>
-          </table>
-        </div>
-
-        <div class="footer">
-          <p>This report was generated by the Saiberassist ROI Calculator. For more information, visit https://saiberassist.com/</p>
-          <p>No PHI collected. See our <a href="https://saiberassist.com/privacy-policy/">privacy policy</a> for details.</p>
-        </div>
-      </body>
-    </html>
-  `;
-
-    // Use html2pdf library if available, otherwise use print dialog
-    if (typeof html2pdf !== "undefined") {
-      try {
-        const element = document.createElement('div');
-        element.innerHTML = html;
-        
-        const options = {
+        html2pdf().set({
           margin: 10,
           filename: `ROI-Report-${new Date().getTime()}.pdf`,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
-        };
+          html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+          jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+        }).from(simpleHtml).save();
         
-        html2pdf().set(options).from(element).save().catch(err => {
-          console.warn("✓ html2pdf failed, using print dialog fallback:", err);
-          const printWindow = window.open("", "", "height=800,width=900");
-          printWindow.document.write(html);
-          printWindow.document.close();
-          printWindow.print();
-        });
-        console.log("✓ PDF download via html2pdf");
-      } catch (e) {
-        console.warn("✓ html2pdf error, using print dialog fallback:", e);
-        const printWindow = window.open("", "", "height=800,width=900");
-        printWindow.document.write(html);
-        printWindow.document.close();
-        printWindow.print();
+        console.log("✓ PDF generated via html2pdf fallback");
+      } else {
+        throw new Error("No PDF library available");
       }
-    } else {
-      console.warn("html2pdf not loaded, using print dialog fallback");
-      const printWindow = window.open("", "", "height=800,width=900");
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.print();
     }
   } catch (error) {
     console.error("❌ PDF generation error:", error);
-    // Fallback: Open print dialog even if there's an error
-    try {
-      const fallbackHtml = `
-        <html>
-          <head><title>ROI Report</title></head>
-          <body>
-            <h1>Saiberassist ROI Calculator Report</h1>
-            <p>Generated: ${new Date().toLocaleDateString()}</p>
-            <h2>Your Results</h2>
-            <p>Net Annual Benefit: $${values.netBenefit.toLocaleString()}</p>
-            <p>Extra Patients per Week: +${values.extraPatientsPerWeek}</p>
-            <p>Hours Back per Week: +${values.hoursRecoveredPerWeek.toFixed(1)}</p>
-            <p>Break-Even: ${values.breakEvenMonths} months</p>
-          </body>
-        </html>
-      `;
-      const printWindow = window.open("", "", "height=800,width=900");
-      printWindow.document.write(fallbackHtml);
-      printWindow.document.close();
-      printWindow.print();
-      console.log("✓ Fallback print dialog opened");
-    } catch (fallbackError) {
-      console.error("❌ Even fallback failed:", fallbackError);
-      alert("Unable to generate PDF. Please try using your browser's print function (Ctrl+P / Cmd+P) instead.");
-    }
+    alert("📋 Unable to generate PDF directly. Opening print dialog instead. Press Ctrl+P (or Cmd+P on Mac) to save as PDF.");
+    window.print();
   }
 }
 
