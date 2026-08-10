@@ -415,3 +415,157 @@ citationsToggleBtn.addEventListener("click", (event) => {
     citationsSection.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 });
+
+function downloadAsCSV() {
+  const inputs = readInputs();
+  const values = calculate(inputs);
+  
+  const rows = [
+    ["ROI Calculator Results", new Date().toLocaleDateString()],
+    [],
+    ["INPUT PARAMETERS"],
+    ["Specialty", inputs.specialty],
+    ["Patients per week", inputs.patientsPerWeek],
+    ["Admin hours per week", inputs.adminHours],
+    ["Revenue per visit ($)", inputs.revenuePerVisit || "Default"],
+    ["Overhead per visit ($)", inputs.overheadPerVisit || "Default"],
+    ["Number of VAs", inputs.vaCount],
+    ["Missed appointments per week", inputs.missedAppointmentsPerWeek || "0"],
+    ["Prior authorizations per week", inputs.priorAuthsPerWeek || "0"],
+    [],
+    ["KEY RESULTS"],
+    ["Net Annual Benefit ($)", values.netBenefit],
+    ["Extra Patients per Week", values.extraPatientsPerWeek],
+    ["Hours Back per Week", values.hoursRecoveredPerWeek.toFixed(1)],
+    ["Break-even months", values.breakEvenMonths],
+    [],
+    ["REVENUE BREAKDOWN"],
+    ["Additional Revenue (annual)", values.additionalRevenue],
+    ["Additional Overhead (annual)", values.additionalOverhead],
+    ["Missed Appointment Recovery", values.missedAppointmentMargin],
+    ["Prior Auth Revenue", values.priorAuthMargin],
+    ["Total VA Cost", values.totalVACost],
+  ];
+
+  const csv = rows.map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", `ROI-Calculator-${new Date().getTime()}.csv`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function downloadAsPDF() {
+  const inputs = readInputs();
+  const values = calculate(inputs);
+  
+  const docTitle = "Saiberassist ROI Calculator Report";
+  const timestamp = new Date().toLocaleDateString();
+  
+  let html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${docTitle}</title>
+        <style>
+          body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; padding: 20px; }
+          h1 { color: #332058; border-bottom: 3px solid #33bca8; padding-bottom: 10px; }
+          h2 { color: #332058; margin-top: 20px; }
+          .section { margin: 20px 0; }
+          .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
+          .metric { border: 1px solid #ddd; padding: 12px; border-radius: 8px; background: #f9f9f9; }
+          .metric-label { font-size: 12px; color: #666; margin-bottom: 5px; }
+          .metric-value { font-size: 20px; font-weight: bold; color: #33bca8; }
+          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+          th { background: #332058; color: white; }
+          .footer { margin-top: 30px; font-size: 12px; color: #999; border-top: 1px solid #ddd; padding-top: 15px; }
+        </style>
+      </head>
+      <body>
+        <h1>${docTitle}</h1>
+        <p><strong>Generated:</strong> ${timestamp}</p>
+        
+        <div class="section">
+          <h2>Your Estimate</h2>
+          <div class="metrics">
+            <div class="metric">
+              <div class="metric-label">Net Annual Benefit</div>
+              <div class="metric-value">$${values.netBenefit.toLocaleString()}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Extra Patients / Week</div>
+              <div class="metric-value">+${values.extraPatientsPerWeek}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Hours Back / Week</div>
+              <div class="metric-value">+${values.hoursRecoveredPerWeek.toFixed(1)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Break-Even</div>
+              <div class="metric-value">${values.breakEvenMonths} months</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Input Parameters</h2>
+          <table>
+            <tr><td><strong>Specialty</strong></td><td>${inputs.specialty}</td></tr>
+            <tr><td><strong>Patients per week</strong></td><td>${inputs.patientsPerWeek}</td></tr>
+            <tr><td><strong>Admin hours per week</strong></td><td>${inputs.adminHours}</td></tr>
+            <tr><td><strong>Revenue per visit</strong></td><td>$${inputs.revenuePerVisit || "Default"}</td></tr>
+            <tr><td><strong>Overhead per visit</strong></td><td>$${inputs.overheadPerVisit || "Default"}</td></tr>
+            <tr><td><strong>Number of VAs</strong></td><td>${inputs.vaCount}</td></tr>
+            <tr><td><strong>Missed appointments per week</strong></td><td>${inputs.missedAppointmentsPerWeek || "0"}</td></tr>
+            <tr><td><strong>Prior authorizations per week</strong></td><td>${inputs.priorAuthsPerWeek || "0"}</td></tr>
+          </table>
+        </div>
+
+        <div class="section">
+          <h2>Financial Breakdown</h2>
+          <table>
+            <tr><th>Component</th><th>Annual Amount</th></tr>
+            <tr><td>Additional Revenue</td><td>$${values.additionalRevenue.toLocaleString()}</td></tr>
+            <tr><td>Additional Overhead</td><td>$${values.additionalOverhead.toLocaleString()}</td></tr>
+            <tr><td>Missed Appointment Recovery</td><td>$${values.missedAppointmentMargin.toLocaleString()}</td></tr>
+            <tr><td>Prior Auth Revenue</td><td>$${values.priorAuthMargin.toLocaleString()}</td></tr>
+            <tr style="background: #f0f0f0;"><td><strong>Total Margin</strong></td><td><strong>$${(values.additionalRevenue - values.additionalOverhead + values.missedAppointmentMargin + values.priorAuthMargin).toLocaleString()}</strong></td></tr>
+            <tr><td>Total VA Cost</td><td>$${values.totalVACost.toLocaleString()}</td></tr>
+            <tr style="background: #e8f5f2;"><td><strong>Net Annual Benefit</strong></td><td><strong style="color: #33bca8;">$${values.netBenefit.toLocaleString()}</strong></td></tr>
+          </table>
+        </div>
+
+        <div class="footer">
+          <p>This report was generated by the Saiberassist ROI Calculator. For more information, visit https://saiberassist.com/</p>
+          <p>No PHI collected. See our <a href="https://saiberassist.com/privacy-policy/">privacy policy</a> for details.</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  // Use html2pdf library if available, otherwise use a simple PDF alternative
+  if (typeof html2pdf !== "undefined") {
+    html2pdf().setOptions({
+      margin: 10,
+      filename: `ROI-Report-${new Date().getTime()}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
+    }).from(html).save();
+  } else {
+    // Fallback: open print dialog
+    const printWindow = window.open("", "", "height=800,width=900");
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.print();
+  }
+}
+
+document.getElementById("downloadCSV").addEventListener("click", downloadAsCSV);
+document.getElementById("downloadPDF").addEventListener("click", downloadAsPDF);
+
