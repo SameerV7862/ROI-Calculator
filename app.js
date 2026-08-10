@@ -536,6 +536,12 @@ function downloadAsCSV() {
     const inputs = readInputs();
     const values = calculate(inputs);
     
+    // Safely extract values with fallbacks
+    const hoursRecovered = (values.recoveredHoursPerWeek || 0).toFixed(1);
+    const breakEvenMonths = values.breakEvenPatients > 0
+      ? Math.ceil((values.breakEvenPatients / Math.max(inputs.patientsPerWeek, 1)) * 4)
+      : "N/A";
+    
     const rows = [
       ["ROI Calculator Results", new Date().toLocaleDateString()],
       [],
@@ -552,15 +558,15 @@ function downloadAsCSV() {
       ["KEY RESULTS"],
       ["Net Annual Benefit ($)", values.netBenefit],
       ["Extra Patients per Week", values.extraPatientsPerWeek],
-      ["Hours Back per Week", values.hoursRecoveredPerWeek.toFixed(1)],
-      ["Break-even months", values.breakEvenMonths],
+      ["Hours Back per Week", hoursRecovered],
+      ["Break-even months", breakEvenMonths],
       [],
       ["REVENUE BREAKDOWN"],
       ["Additional Revenue (annual)", values.additionalRevenue],
       ["Additional Overhead (annual)", values.additionalOverhead],
       ["Missed Appointment Recovery", values.missedAppointmentMargin],
       ["Prior Auth Revenue", values.priorAuthMargin],
-      ["Total VA Cost", values.totalVACost],
+      ["Total VA Cost", values.annualVACost],
     ];
 
     const csv = rows.map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
@@ -586,6 +592,19 @@ function downloadAsPDF() {
     console.log("✓ Starting PDF generation...");
     const inputs = readInputs();
     const values = calculate(inputs);
+    
+    // Safely extract/compute values with fallbacks
+    const hoursRecovered = (values.recoveredHoursPerWeek || 0).toFixed(1);
+    const breakEvenMonths = values.breakEvenPatients > 0 
+      ? Math.ceil((values.breakEvenPatients / Math.max(inputs.patientsPerWeek, 1)) * 4) 
+      : "N/A";
+    const netBenefit = values.netBenefit || 0;
+    const extraPatients = values.extraPatientsPerWeek || 0;
+    const additionalRevenue = values.additionalRevenue || 0;
+    const additionalOverhead = values.additionalOverhead || 0;
+    const totalVACost = values.annualVACost || 0;
+    const missedAppointmentMargin = values.missedAppointmentMargin || 0;
+    const priorAuthMargin = values.priorAuthMargin || 0;
     
     const timestamp = new Date().toLocaleDateString();
     
@@ -616,19 +635,19 @@ function downloadAsPDF() {
             <h2>Your ROI Estimate</h2>
             <div class="metric">
               <span class="label">Net Annual Benefit:</span>
-              <span class="value">$${values.netBenefit.toLocaleString()}</span>
+              <span class="value">$${netBenefit.toLocaleString()}</span>
             </div>
             <div class="metric">
               <span class="label">Extra Patients per Week:</span>
-              <span class="value">+${values.extraPatientsPerWeek}</span>
+              <span class="value">+${extraPatients}</span>
             </div>
             <div class="metric">
               <span class="label">Hours Recovered per Week:</span>
-              <span class="value">+${values.hoursRecoveredPerWeek.toFixed(1)}</span>
+              <span class="value">+${hoursRecovered}</span>
             </div>
             <div class="metric">
               <span class="label">Break-Even Point:</span>
-              <span class="value">${values.breakEvenMonths} months</span>
+              <span class="value">${breakEvenMonths} months</span>
             </div>
           </div>
           
@@ -641,27 +660,27 @@ function downloadAsPDF() {
               </tr>
               <tr>
                 <td>Additional Revenue</td>
-                <td>$${values.additionalRevenue.toLocaleString()}</td>
+                <td>$${additionalRevenue.toLocaleString()}</td>
               </tr>
               <tr>
                 <td>Additional Overhead</td>
-                <td>-$${values.additionalOverhead.toLocaleString()}</td>
+                <td>-$${additionalOverhead.toLocaleString()}</td>
               </tr>
               <tr>
                 <td>Missed Appointment Recovery</td>
-                <td>$${values.missedAppointmentMargin.toLocaleString()}</td>
+                <td>$${missedAppointmentMargin.toLocaleString()}</td>
               </tr>
               <tr>
                 <td>Prior Auth Revenue</td>
-                <td>$${values.priorAuthMargin.toLocaleString()}</td>
+                <td>$${priorAuthMargin.toLocaleString()}</td>
               </tr>
               <tr style="background: #f0f0f0;">
                 <td><strong>Total VA Cost</strong></td>
-                <td><strong>-$${values.totalVACost.toLocaleString()}</strong></td>
+                <td><strong>-$${totalVACost.toLocaleString()}</strong></td>
               </tr>
               <tr style="background: #e8f5f2;">
                 <td><strong>NET BENEFIT</strong></td>
-                <td><strong style="color: #33bca8;">$${values.netBenefit.toLocaleString()}</strong></td>
+                <td><strong style="color: #33bca8;">$${netBenefit.toLocaleString()}</strong></td>
               </tr>
             </table>
           </div>
