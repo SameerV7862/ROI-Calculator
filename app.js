@@ -590,118 +590,50 @@ function downloadAsCSV() {
 function downloadAsPDF() {
   try {
     console.log("✓ Starting PDF generation...");
-    const inputs = readInputs();
-    const values = calculate(inputs);
     
-    // Safely extract/compute values with fallbacks
-    const hoursRecovered = (values.recoveredHoursPerWeek || 0).toFixed(1);
-    const breakEvenMonths = values.breakEvenPatients > 0 
-      ? Math.ceil((values.breakEvenPatients / Math.max(inputs.patientsPerWeek, 1)) * 4) 
-      : "N/A";
-    const netBenefit = values.netBenefit || 0;
-    const extraPatients = values.extraPatientsPerWeek || 0;
-    const additionalRevenue = values.additionalRevenue || 0;
-    const additionalOverhead = values.additionalOverhead || 0;
-    const totalVACost = values.annualVACost || 0;
-    const missedAppointmentMargin = values.missedAppointmentMargin || 0;
-    const priorAuthMargin = values.priorAuthMargin || 0;
+    // Get the results section that's already displayed on the page
+    const resultsSection = document.querySelector(".results-section");
+    const gateSection = document.querySelector(".gate");
     
-    const timestamp = new Date().toLocaleDateString();
+    if (!resultsSection) {
+      console.warn("⚠ Results section not found, using print dialog");
+      window.print();
+      return;
+    }
     
-    // Create HTML for PDF
-    const pdfHTML = `
+    // Create a printable version
+    const printContent = `
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>ROI Report</title>
 <style>
-  * { margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }
-  h1 { color: #332058; font-size: 28px; border-bottom: 3px solid #33bca8; padding-bottom: 15px; margin-bottom: 20px; }
-  h2 { color: #332058; font-size: 18px; margin-top: 30px; margin-bottom: 15px; }
-  .metric { margin: 10px 0; font-size: 14px; }
-  .metric-label { font-weight: bold; display: inline-block; width: 250px; }
-  .metric-value { color: #33bca8; font-weight: bold; }
-  table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }
-  th { background: #332058; color: white; padding: 10px; text-align: left; }
-  td { border: 1px solid #ddd; padding: 10px; }
-  .footer { margin-top: 40px; font-size: 11px; color: #999; border-top: 1px solid #ddd; padding-top: 20px; }
+  body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; color: #333; }
+  h1 { color: #332058; font-size: 24px; margin-bottom: 10px; border-bottom: 2px solid #33bca8; padding-bottom: 10px; }
+  h2 { color: #332058; font-size: 16px; margin-top: 25px; margin-bottom: 10px; }
+  .metric { margin: 8px 0; font-size: 13px; }
+  .label { font-weight: bold; }
+  .value { color: #33bca8; font-weight: bold; }
+  .results-key { background: #f0f9f8; padding: 15px; border-left: 4px solid #33bca8; margin: 15px 0; }
+  .results-key-item { margin: 8px 0; font-size: 14px; }
+  .results-key-label { font-weight: bold; }
+  .results-key-value { font-size: 18px; color: #33bca8; font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 12px; }
+  th { background: #332058; color: white; padding: 8px; text-align: left; }
+  td { border: 1px solid #ddd; padding: 8px; }
+  .footer { margin-top: 30px; font-size: 10px; color: #999; border-top: 1px solid #ddd; padding-top: 15px; }
   @media print { body { padding: 20px; } }
 </style>
 </head>
 <body>
   <h1>Saiberassist ROI Calculator Report</h1>
-  <p><strong>Generated:</strong> ${timestamp}</p>
-  
-  <h2>Your ROI Estimate</h2>
-  <div class="metric">
-    <span class="metric-label">Net Annual Benefit:</span>
-    <span class="metric-value">$${netBenefit.toLocaleString()}</span>
+  <p>Generated: ${new Date().toLocaleDateString()}</p>
+  <div style="color: #666; font-size: 12px; margin-bottom: 20px;">
+    This report shows your ROI calculation results based on your specialty and administrative burden.
   </div>
-  <div class="metric">
-    <span class="metric-label">Extra Patients per Week:</span>
-    <span class="metric-value">+${extraPatients}</span>
-  </div>
-  <div class="metric">
-    <span class="metric-label">Hours Recovered per Week:</span>
-    <span class="metric-value">+${hoursRecovered}</span>
-  </div>
-  <div class="metric">
-    <span class="metric-label">Break-Even Point:</span>
-    <span class="metric-value">${breakEvenMonths} months</span>
-  </div>
-  
-  <h2>Financial Summary</h2>
-  <table>
-    <tr>
-      <th>Component</th>
-      <th>Annual Amount</th>
-    </tr>
-    <tr>
-      <td>Additional Revenue</td>
-      <td>$${additionalRevenue.toLocaleString()}</td>
-    </tr>
-    <tr>
-      <td>Additional Overhead</td>
-      <td>-$${additionalOverhead.toLocaleString()}</td>
-    </tr>
-    <tr>
-      <td>Missed Appointment Recovery</td>
-      <td>$${missedAppointmentMargin.toLocaleString()}</td>
-    </tr>
-    <tr>
-      <td>Prior Auth Revenue</td>
-      <td>$${priorAuthMargin.toLocaleString()}</td>
-    </tr>
-    <tr style="background: #f0f0f0;">
-      <td><strong>Total VA Cost</strong></td>
-      <td><strong>-$${totalVACost.toLocaleString()}</strong></td>
-    </tr>
-    <tr style="background: #e8f5f2;">
-      <td><strong>NET BENEFIT</strong></td>
-      <td><strong style="color: #33bca8;">$${netBenefit.toLocaleString()}</strong></td>
-    </tr>
-  </table>
-  
-  <h2>Your Inputs</h2>
-  <div class="metric">
-    <span class="metric-label">Specialty:</span>
-    <span>${inputs.specialty}</span>
-  </div>
-  <div class="metric">
-    <span class="metric-label">Patients per Week:</span>
-    <span>${inputs.patientsPerWeek}</span>
-  </div>
-  <div class="metric">
-    <span class="metric-label">Admin Hours per Week:</span>
-    <span>${inputs.adminHours}</span>
-  </div>
-  <div class="metric">
-    <span class="metric-label">Number of VAs:</span>
-    <span>${inputs.vaCount}</span>
-  </div>
-  
+  ${resultsSection.innerHTML}
+  ${gateSection && gateSection.querySelector(".download-section") ? gateSection.querySelector(".download-section").innerHTML : ""}
   <div class="footer">
     <p>This report was generated by the Saiberassist ROI Calculator.</p>
     <p>Visit https://saiberassist.com/ for more information.</p>
@@ -710,21 +642,20 @@ function downloadAsPDF() {
 </html>
     `;
     
-    // Open in new window and print to PDF
-    const printWindow = window.open("", "PRINT", "width=900,height=800");
-    printWindow.document.write(pdfHTML);
+    // Open print dialog with the content
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(printContent);
     printWindow.document.close();
     
-    // Small delay to ensure content loads, then print
     setTimeout(() => {
       printWindow.focus();
       printWindow.print();
-      console.log("✓ Print dialog opened");
-    }, 250);
+      console.log("✓ Print dialog opened with page results");
+    }, 500);
     
   } catch (error) {
-    console.error("❌ PDF error:", error);
-    alert("Unable to generate PDF. Using print dialog (Ctrl+P).");
+    console.error("❌ PDF generation error:", error);
+    console.log("⚠ Fallback: Using page print dialog");
     window.print();
   }
 }
