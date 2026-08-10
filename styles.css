@@ -460,3 +460,111 @@ input[type="range"] {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+@media print {
+  body {
+    background: white;
+    color: #000;
+    font-size: 11pt;
+    line-height: 1.5;
+    margin: 0;
+    padding: 20pt;
+  }
+
+  .page {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  .card {
+    page-break-inside: avoid;
+    border: none;
+    box-shadow: none;
+    padding: 0 0 12pt 0;
+    margin-bottom: 12pt;
+  }
+
+  .hero {
+    background: white;
+    margin-bottom: 20pt;
+  }
+
+  .hero h1 {
+    font-size: 18pt;
+    margin-bottom: 10pt;
+  }
+
+  .hero .subtitle {
+    display: none;
+  }
+
+  .form-wrap {
+    display: none;
+  }
+
+  .form-wrap h2 {
+    display: none;
+  }
+
+  h1, h2, h3 {
+    page-break-after: avoid;
+    color: #332058;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+    margin: 12pt 0;
+  }
+
+  .metrics article {
+    background: white;
+    border: 1px solid #ccc;
+    padding: 8pt;
+  }
+
+  .results-section {
+    page-break-inside: avoid;
+  }
+
+  .comparison-table {
+    page-break-inside: avoid;
+    font-size: 9pt;
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    padding: 4pt 6pt;
+  }
+
+  .download-actions {
+    display: none;
+  }
+
+  .actions {
+    display: none;
+  }
+
+  .button {
+    display: none;
+  }
+
+  .footer {
+    margin-top: 20pt;
+    padding-top: 12pt;
+    border-top: 1px solid #ccc;
+    font-size: 9pt;
+    color: #666;
+  }
+
+  a {
+    color: #0000cc;
+    text-decoration: underline;
+  }
+
+  img {
+    max-width: 100%;
+    page-break-inside: avoid;
+  }
+}
+/* Cache bust: Mon Aug 10 18:21:27 EDT 2026 */
