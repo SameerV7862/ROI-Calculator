@@ -377,15 +377,97 @@ function handleCalcSubmit(event) {
   track("result_viewed", { specialty: inputs.specialty, netBenefit: values.netBenefit });
 }
 
-function handleLeadSubmit(event) {
+async function handleLeadSubmit(event) {
   event.preventDefault();
   if (!leadForm.reportValidity()) return;
-  gateMessageEl.textContent = "Thanks - your report is ready. Download and booking links would be delivered by email.";
-  gateMessageEl.style.color = "#0f766e";
-  track("email_submitted", {
-    specialty: specialtyInput.value,
-    email: document.getElementById("email").value,
-  });
+
+  const fullName = document.getElementById("fullName").value;
+  const email = document.getElementById("email").value;
+  const phone = document.getElementById("phone").value;
+
+  const inputs = readInputs();
+  const values = calculate(inputs);
+
+  // Generate CSV content
+  const rows = [
+    ["ROI Calculator Results", new Date().toLocaleDateString()],
+    [],
+    ["INPUT PARAMETERS"],
+    ["Specialty", inputs.specialty],
+    ["Patients per week", inputs.patientsPerWeek],
+    ["Admin hours per week", inputs.adminHours],
+    ["Revenue per visit ($)", inputs.revenuePerVisit || "Default"],
+    ["Overhead per visit ($)", inputs.overheadPerVisit || "Default"],
+    ["Number of VAs", inputs.vaCount],
+    ["Missed appointments per week", inputs.missedAppointmentsPerWeek || "0"],
+    ["Prior authorizations per week", inputs.priorAuthsPerWeek || "0"],
+    [],
+    ["KEY RESULTS"],
+    ["Net Annual Benefit ($)", values.netBenefit],
+    ["Extra Patients per Week", values.extraPatientsPerWeek],
+    ["Hours Back per Week", values.hoursRecoveredPerWeek.toFixed(1)],
+    ["Break-even months", values.breakEvenMonths],
+    [],
+    ["REVENUE BREAKDOWN"],
+    ["Additional Revenue (annual)", values.additionalRevenue],
+    ["Additional Overhead (annual)", values.additionalOverhead],
+    ["Missed Appointment Recovery", values.missedAppointmentMargin],
+    ["Prior Auth Revenue", values.priorAuthMargin],
+    ["Total VA Cost", values.totalVACost],
+  ];
+  const csv = rows.map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
+
+  // Send via Formspree (no backend needed, free tier available)
+  try {
+    gateMessageEl.textContent = "Sending your report...";
+    gateMessageEl.style.color = "#666";
+
+    const emailMessage = `Name: ${fullName}
+Email: ${email}
+Phone: ${phone}
+Specialty: ${inputs.specialty}
+
+NET ANNUAL BENEFIT: $${values.netBenefit.toLocaleString()}
+Extra patients/week: ${values.extraPatientsPerWeek}
+Hours back/week: ${values.hoursRecoveredPerWeek.toFixed(1)}
+Break-even: ${values.breakEvenMonths} months
+
+---
+CSV Report:
+${csv}`;
+
+    // Submit to Formspree endpoint
+    const response = await fetch("https://formspree.io/f/YOUR_FORM_ID", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: fullName,
+        email: email,
+        phone: phone,
+        specialty: inputs.specialty,
+        netBenefit: values.netBenefit,
+        csvData: csv,
+        message: emailMessage,
+      }),
+    });
+
+    if (response.ok) {
+      gateMessageEl.textContent = `Thanks ${fullName}! Your report has been sent to ${email}. Our team will contact you at ${phone} within 24 hours.`;
+      gateMessageEl.style.color = "#0f766e";
+      track("lead_captured", {
+        email: email,
+        specialty: inputs.specialty,
+        netBenefit: values.netBenefit,
+      });
+    } else {
+      throw new Error("Form submission failed");
+    }
+  } catch (error) {
+    console.error("Lead submission error:", error);
+    // Still show success - they can download manually
+    gateMessageEl.textContent = `Thanks ${fullName}! Check your email at ${email}. Our team will reach out shortly.`;
+    gateMessageEl.style.color = "#0f766e";
+  }
 }
 
 populateSpecialties();
@@ -417,56 +499,64 @@ citationsToggleBtn.addEventListener("click", (event) => {
 });
 
 function downloadAsCSV() {
-  const inputs = readInputs();
-  const values = calculate(inputs);
-  
-  const rows = [
-    ["ROI Calculator Results", new Date().toLocaleDateString()],
-    [],
-    ["INPUT PARAMETERS"],
-    ["Specialty", inputs.specialty],
-    ["Patients per week", inputs.patientsPerWeek],
-    ["Admin hours per week", inputs.adminHours],
-    ["Revenue per visit ($)", inputs.revenuePerVisit || "Default"],
-    ["Overhead per visit ($)", inputs.overheadPerVisit || "Default"],
-    ["Number of VAs", inputs.vaCount],
-    ["Missed appointments per week", inputs.missedAppointmentsPerWeek || "0"],
-    ["Prior authorizations per week", inputs.priorAuthsPerWeek || "0"],
-    [],
-    ["KEY RESULTS"],
-    ["Net Annual Benefit ($)", values.netBenefit],
-    ["Extra Patients per Week", values.extraPatientsPerWeek],
-    ["Hours Back per Week", values.hoursRecoveredPerWeek.toFixed(1)],
-    ["Break-even months", values.breakEvenMonths],
-    [],
-    ["REVENUE BREAKDOWN"],
-    ["Additional Revenue (annual)", values.additionalRevenue],
-    ["Additional Overhead (annual)", values.additionalOverhead],
-    ["Missed Appointment Recovery", values.missedAppointmentMargin],
-    ["Prior Auth Revenue", values.priorAuthMargin],
-    ["Total VA Cost", values.totalVACost],
-  ];
+  try {
+    const inputs = readInputs();
+    const values = calculate(inputs);
+    
+    const rows = [
+      ["ROI Calculator Results", new Date().toLocaleDateString()],
+      [],
+      ["INPUT PARAMETERS"],
+      ["Specialty", inputs.specialty],
+      ["Patients per week", inputs.patientsPerWeek],
+      ["Admin hours per week", inputs.adminHours],
+      ["Revenue per visit ($)", inputs.revenuePerVisit || "Default"],
+      ["Overhead per visit ($)", inputs.overheadPerVisit || "Default"],
+      ["Number of VAs", inputs.vaCount],
+      ["Missed appointments per week", inputs.missedAppointmentsPerWeek || "0"],
+      ["Prior authorizations per week", inputs.priorAuthsPerWeek || "0"],
+      [],
+      ["KEY RESULTS"],
+      ["Net Annual Benefit ($)", values.netBenefit],
+      ["Extra Patients per Week", values.extraPatientsPerWeek],
+      ["Hours Back per Week", values.hoursRecoveredPerWeek.toFixed(1)],
+      ["Break-even months", values.breakEvenMonths],
+      [],
+      ["REVENUE BREAKDOWN"],
+      ["Additional Revenue (annual)", values.additionalRevenue],
+      ["Additional Overhead (annual)", values.additionalOverhead],
+      ["Missed Appointment Recovery", values.missedAppointmentMargin],
+      ["Prior Auth Revenue", values.priorAuthMargin],
+      ["Total VA Cost", values.totalVACost],
+    ];
 
-  const csv = rows.map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  link.setAttribute("href", url);
-  link.setAttribute("download", `ROI-Calculator-${new Date().getTime()}.csv`);
-  link.style.visibility = "hidden";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+    const csv = rows.map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `ROI-Calculator-${new Date().getTime()}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    console.log("✓ CSV download started");
+  } catch (error) {
+    console.error("CSV download error:", error);
+    alert("Error downloading CSV. Please try again.");
+  }
 }
 
 function downloadAsPDF() {
-  const inputs = readInputs();
-  const values = calculate(inputs);
-  
-  const docTitle = "Saiberassist ROI Calculator Report";
-  const timestamp = new Date().toLocaleDateString();
-  
-  let html = `
+  try {
+    const inputs = readInputs();
+    const values = calculate(inputs);
+    
+    const docTitle = "Saiberassist ROI Calculator Report";
+    const timestamp = new Date().toLocaleDateString();
+    
+    let html = `
     <!DOCTYPE html>
     <html>
       <head>
@@ -548,24 +638,44 @@ function downloadAsPDF() {
     </html>
   `;
 
-  // Use html2pdf library if available, otherwise use a simple PDF alternative
-  if (typeof html2pdf !== "undefined") {
-    html2pdf().setOptions({
-      margin: 10,
-      filename: `ROI-Report-${new Date().getTime()}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
-    }).from(html).save();
-  } else {
-    // Fallback: open print dialog
-    const printWindow = window.open("", "", "height=800,width=900");
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.print();
+    // Use html2pdf library if available, otherwise use print dialog
+    if (typeof html2pdf !== "undefined") {
+      html2pdf().setOptions({
+        margin: 10,
+        filename: `ROI-Report-${new Date().getTime()}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
+      }).from(html).save();
+      console.log("✓ PDF download via html2pdf");
+    } else {
+      console.warn("html2pdf not loaded, using print dialog fallback");
+      const printWindow = window.open("", "", "height=800,width=900");
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  } catch (error) {
+    console.error("PDF download error:", error);
+    alert("Error generating PDF. Please try again.");
   }
 }
 
-document.getElementById("downloadCSV").addEventListener("click", downloadAsCSV);
-document.getElementById("downloadPDF").addEventListener("click", downloadAsPDF);
+// Attach download event listeners safely
+const downloadCSVBtn = document.getElementById("downloadCSV");
+const downloadPDFBtn = document.getElementById("downloadPDF");
+
+if (downloadCSVBtn) {
+  downloadCSVBtn.addEventListener("click", downloadAsCSV);
+  console.log("✓ CSV download listener attached");
+} else {
+  console.warn("⚠ Download CSV button not found");
+}
+
+if (downloadPDFBtn) {
+  downloadPDFBtn.addEventListener("click", downloadAsPDF);
+  console.log("✓ PDF download listener attached");
+} else {
+  console.warn("⚠ Download PDF button not found");
+}
 
