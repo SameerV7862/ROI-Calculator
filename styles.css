@@ -141,6 +141,30 @@ input[type="range"] {
   filter: brightness(1.05);
 }
 
+.button-secondary {
+  border: 1px solid var(--brand-teal);
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--brand-teal);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.button-secondary:hover {
+  background: var(--brand-teal);
+  color: #fff;
+}
+
+.download-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .formula-link {
   color: var(--brand-deep);
   font-weight: 600;
